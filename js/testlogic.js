@@ -211,124 +211,81 @@ function combineQuestionData(originalQuestions, newCategoryInfoArray) {
  * @param {Object} userScores - 사용자의 7가지 매력 카테고리별 점수 객체.
  * @returns {Object|null} { firstQuestionId: id1, secondQuestionId: id2 } 형태의 객체, 또는 실패 시 null.
  */
-function selectTwoPersonalizedStage3Questions(allAugmentedQuestions, userScores) {
-    if (!allAugmentedQuestions || allAugmentedQuestions.length < 2) { // 최소 2개의 질문은 있어야 두 개를 고를 수 있음
-        console.error("[selectTwoPersonalizedStage3Questions] 질문 데이터가 충분하지 않습니다.");
+function selectPersonalizedStage3Questions(allAugmentedQuestions, userScores) {
+    // [검증] 질문 데이터가 3개 미만이면 개인화 선택이 불가능합니다.
+    if (!allAugmentedQuestions || allAugmentedQuestions.length < 3) {
+        console.error("[selectPersonalizedStage3Questions] 질문 데이터가 3개 미만이라 개인화 선택이 불가능합니다.");
         return null;
     }
-    if (!userScores || Object.keys(userScores).length === 0) {
-        console.warn("[selectTwoPersonalizedStage3Questions] 사용자 매력 점수 데이터가 없습니다. 무작위 선택으로 대체될 수 있습니다.");
-        // 점수 데이터가 없으면 개인화가 어려우므로, 무작위 또는 기본값으로 대체하는 로직이 필요할 수 있습니다.
-        // 여기서는 간단히 앞의 두 질문 ID를 반환하거나, 더 정교한 무작위 선택이 필요합니다.
-        // 우선은 개인화가 불가능함을 알리고 null을 반환하거나, 정말 기본적인 fallback을 넣습니다.
-        const fallbackQ1 = allAugmentedQuestions[0] ? allAugmentedQuestions[0].id : null;
-        const fallbackQ2 = allAugmentedQuestions[1] ? allAugmentedQuestions[1].id : null;
-        if (fallbackQ1 && fallbackQ2 && fallbackQ1 !== fallbackQ2) {
-            return { firstQuestionId: fallbackQ1, secondQuestionId: fallbackQ2 };
-        }
-        return null;
+    // [검증] 사용자 점수 데이터가 없으면 무작위로 3개를 선택합니다.
+    if (!userScores) {
+        console.warn("[selectPersonalizedStage3Questions] 사용자 점수 데이터가 없어 무작위 선택됩니다.");
+        const shuffled = allAugmentedQuestions.sort(() => 0.5 - Math.random());
+        return { firstQuestionId: shuffled[0].id, secondQuestionId: shuffled[1].id, thirdQuestionId: shuffled[2].id };
     }
 
-    // الف. 각 질문 덩어리(QG)의 '개인화 적합도 점수(qgFitnessScore)' 계산
+    // 1. 각 질문의 '개인화 적합도 점수' 계산
     const questionsWithFitness = allAugmentedQuestions.map(qg => {
-        let qgFitnessScore = 0;
-        if (qg.attractionCategories && Array.isArray(qg.attractionCategories)) {
-            qg.attractionCategories.forEach(acName => {
-                qgFitnessScore += (userScores[acName] || 0); // 해당 매력 카테고리 점수를 더함 (없으면 0점)
-            });
-        }
-        return { ...qg, qgFitnessScore }; // 기존 질문 정보에 적합도 점수 추가
+        let qgFitnessScore = qg.attractionCategories.reduce((score, acName) => score + (userScores[acName] || 0), 0);
+        return { ...qg, qgFitnessScore };
     });
 
-    // ب. 4가지 '성찰 카테고리(RC)'별 총 적합도 점수 계산
-    const reflectionCategoryScores = { "경험": 0, "가치": 0, "성장": 0, "관계": 0 };
+    // 2. 4가지 '성찰 카테고리'별 총 점수 및 질문 목록 계산
+    const rcScores = { "경험": 0, "가치": 0, "성장": 0, "관계": 0 };
     const questionsByRC = { "경험": [], "가치": [], "성장": [], "관계": [] };
 
     questionsWithFitness.forEach(qg => {
-        if (reflectionCategoryScores.hasOwnProperty(qg.reflectionCategory)) {
-            reflectionCategoryScores[qg.reflectionCategory] += qg.qgFitnessScore;
+        if (rcScores.hasOwnProperty(qg.reflectionCategory)) {
+            rcScores[qg.reflectionCategory] += qg.qgFitnessScore;
             questionsByRC[qg.reflectionCategory].push(qg);
         }
     });
 
-    // ج. 성찰 카테고리를 점수 순으로 정렬
-    const sortedReflectionCategories = Object.entries(reflectionCategoryScores)
+    // 3. 점수 순으로 성찰 카테고리 정렬
+    const sortedRC = Object.entries(rcScores)
         .map(([name, score]) => ({ name, score, questions: questionsByRC[name] }))
-        .filter(rc => rc.questions.length > 0) // 질문이 있는 카테고리만 필터링
+        .filter(rc => rc.questions.length > 0)
         .sort((a, b) => b.score - a.score);
 
-    if (sortedReflectionCategories.length < 2) {
-        console.error("[selectTwoPersonalizedStage3Questions] 개인화된 질문을 선택하기에 유효한 성찰 카테고리 수가 부족합니다 (2개 미만).");
-        // 대체 로직: 사용 가능한 모든 질문 중에서 적합도 높은 순으로 2개 선택 (카테고리 무관)
-        questionsWithFitness.sort((a,b) => b.qgFitnessScore - a.qgFitnessScore);
-        if (questionsWithFitness.length >= 2 && questionsWithFitness[0].id !== questionsWithFitness[1].id) {
-            return { firstQuestionId: questionsWithFitness[0].id, secondQuestionId: questionsWithFitness[1].id };
+    // 4. 최종 선택된 질문 ID들을 저장할 Set (중복 방지)
+    const selectedIds = new Set();
+    
+    // 성찰 카테고리 내에서 최고점 질문을 찾는 함수
+    const findBestQuestionIdInRC = (rcObject) => {
+        if (!rcObject || rcObject.questions.length === 0) return null;
+        rcObject.questions.sort((a, b) => b.qgFitnessScore - a.qgFitnessScore);
+        for (const question of rcObject.questions) {
+            if (!selectedIds.has(question.id)) return question.id;
         }
         return null;
-    }
+    };
 
-    // --- د. 선택된 각 성찰 카테고리(RC1, RC2) 내에서 가장 적합한 질문 덩어리(QG) 선택 ---
-    // 내부 도움 함수: 특정 성찰 카테고리 내에서 가장 적합한 질문 ID 반환
-    function findBestQuestionIdInRC(rcObject) {
-        if (!rcObject || !rcObject.questions || rcObject.questions.length === 0) return null;
-
-        let maxFitness = -1;
-        rcObject.questions.forEach(qg => {
-            if (qg.qgFitnessScore > maxFitness) {
-                maxFitness = qg.qgFitnessScore;
-            }
-        });
-
-        const bestFitQuestions = rcObject.questions.filter(qg => qg.qgFitnessScore === maxFitness);
-        
-        if (bestFitQuestions.length > 0) {
-            return bestFitQuestions[Math.floor(Math.random() * bestFitQuestions.length)].id;
+    // 5. 상위 3개 카테고리에서 각각 질문 선택 시도
+    sortedRC.slice(0, 3).forEach(rc => {
+        const bestId = findBestQuestionIdInRC(rc);
+        if (bestId) selectedIds.add(bestId);
+    });
+    
+    // 6. [대체 로직] 만약 3개가 선택되지 않았다면, 전체 질문 목록에서 적합도 순으로 부족한 만큼 채우기
+    if (selectedIds.size < 3) {
+        questionsWithFitness.sort((a, b) => b.qgFitnessScore - a.qgFitnessScore);
+        for (const question of questionsWithFitness) {
+            if (selectedIds.size >= 3) break;
+            selectedIds.add(question.id);
         }
-        return null;
-    }
-
-    const firstQuestionParentRC = sortedReflectionCategories[0];
-    const secondQuestionParentRC = sortedReflectionCategories[1];
-
-    const firstQuestionId = findBestQuestionIdInRC(firstQuestionParentRC);
-    let secondQuestionId = findBestQuestionIdInRC(secondQuestionParentRC);
-
-    // 만약 두 번째 카테고리에서 질문을 못 찾았거나, 첫 번째와 같은 질문 ID가 나올 가능성은 낮지만 (다른 RC니까)
-    // 그래도 혹시 모르니 방어. 혹은 세 번째 RC에서 찾도록 할 수도 있음.
-    if (!secondQuestionId && sortedReflectionCategories.length > 2) {
-        const thirdQuestionParentRC = sortedReflectionCategories[2];
-        secondQuestionId = findBestQuestionIdInRC(thirdQuestionParentRC);
     }
     
-    // 최종적으로 두 개의 유효하고 서로 다른 ID를 확보했는지 확인
-    if (firstQuestionId && secondQuestionId && firstQuestionId !== secondQuestionId) {
-        return { firstQuestionId, secondQuestionId };
-    } else if (firstQuestionId && !secondQuestionId) {
-        // 두 번째 질문을 못 찾은 경우, 첫 번째 질문과 다른 RC에서 아무거나 하나 고르기 (단순화된 대체)
-        for (let i = 0; i < questionsWithFitness.length; i++) {
-            if (questionsWithFitness[i].reflectionCategory !== firstQuestionParentRC.name && questionsWithFitness[i].id !== firstQuestionId) {
-                secondQuestionId = questionsWithFitness[i].id;
-                break;
-            }
-        }
-        if (firstQuestionId && secondQuestionId && firstQuestionId !== secondQuestionId) {
-             return { firstQuestionId, secondQuestionId };
-        }
-    }
+    // 7. 최종 결과 반환
+    const [firstQuestionId, secondQuestionId, thirdQuestionId] = Array.from(selectedIds);
 
-    console.error("[selectTwoPersonalizedStage3Questions] 두 개의 서로 다른 개인화 질문 ID를 선택하는 데 실패했습니다. 기본값 또는 추가적인 대체 로직이 필요합니다.");
-    // 최후의 방어: 전체 질문 중 가장 점수 높은 두 개 (서로 다른 ID)
-    questionsWithFitness.sort((a,b) => b.qgFitnessScore - a.qgFitnessScore);
-    if (questionsWithFitness.length >= 2 && questionsWithFitness[0].id !== questionsWithFitness[1].id) {
-        return { firstQuestionId: questionsWithFitness[0].id, secondQuestionId: questionsWithFitness[1].id };
-    } else if (questionsWithFitness.length >= 2) { // ID는 같은데 다른 질문이 있다면
-         return { firstQuestionId: questionsWithFitness[0].id, secondQuestionId: questionsWithFitness[1].id }; // 이부분은 사실상 ID가 달라야 의미가 있음.
+    if (firstQuestionId && secondQuestionId && thirdQuestionId) {
+        return { firstQuestionId, secondQuestionId, thirdQuestionId };
+    } else {
+        // [최후의 대체 로직] 그래도 실패 시, 무작위 3개 반환
+        console.error("3개의 개인화 질문을 선택하는 데 실패했습니다. 기본 질문 3개를 반환합니다.");
+        const shuffled = allAugmentedQuestions.sort(() => 0.5 - Math.random());
+        return { firstQuestionId: shuffled[0].id, secondQuestionId: shuffled[1].id, thirdQuestionId: shuffled[2].id };
     }
-    // 정말정말 마지막으로, 그냥 맨 앞 두개 질문 ID 반환 (서로 다르다면)
-    if (allAugmentedQuestions.length >= 2 && allAugmentedQuestions[0].id !== allAugmentedQuestions[1].id) {
-        return { firstQuestionId: allAugmentedQuestions[0].id, secondQuestionId: allAugmentedQuestions[1].id };
-    }
-    return null;
 }
 // testlogic.js 파일 상단 또는 적절한 위치에 추가
 const ALL_PERSONALITY_QUESTIONS_POOL = [
@@ -985,53 +942,45 @@ calculateUserCategoryScores() {
 // testlogic.js - AttractionTestSystem 클래스 내부에 추가
 // 예: calculateUserCategoryScores() 메소드 다음이나, 클래스 맨 마지막에 추가
 
+// 기존 함수를 지우고 이 코드로 전체를 교체해주세요.
 getPersonalizedPersonalityQuestions() {
-    const userCategoryScores = this.calculateUserCategoryScores(); // 2단계에서 만든 함수 호출
+    const userCategoryScores = this.calculateUserCategoryScores();
 
-    // 각 성향 질문의 관련성 점수를 계산합니다.
     const scoredQuestions = this.allPersonalityQuestions.map(question => {
         let relevanceScore = 0;
-        // 각 질문의 두 선지(A, B)의 카테고리가 사용자의 선호도와 얼마나 일치하는지 확인합니다.
         if (question.choices.A && userCategoryScores.hasOwnProperty(question.choices.A.category)) {
             relevanceScore += userCategoryScores[question.choices.A.category];
         }
         if (question.choices.B && userCategoryScores.hasOwnProperty(question.choices.B.category)) {
             relevanceScore += userCategoryScores[question.choices.B.category];
         }
-
-        // (선택적 가중치) 두 선지의 카테고리가 서로 다르고, 둘 다 사용자의 상위 선호 카테고리에 포함되면 추가 점수
-        // 예를 들어, 사용자가 '성실성'과 '이해심'을 높게 선택했고, 질문의 선지가 각각 이 두 카테고리를 포함한다면 더 높은 점수 부여
-        // 이 부분은 로직을 더 정교하게 만들고 싶을 때 추가할 수 있습니다. 지금은 단순 합산으로 진행합니다.
-
         return {
-            ...question, // 원래 질문 데이터 (...id, text, choices 객체 전체)
-            relevanceScore: relevanceScore // 계산된 관련성 점수
+            ...question,
+            relevanceScore: relevanceScore
         };
     });
 
-    // 관련성 점수가 높은 순으로 질문들을 정렬합니다.
     scoredQuestions.sort((a, b) => b.relevanceScore - a.relevanceScore);
 
-    // console.log("점수 기반 정렬된 성향 질문:", scoredQuestions); // 확인용 로그
-
-    // 상위 4개의 질문을 선택합니다.
-    // 만약 모든 질문의 relevanceScore가 0이라면 (예: 초기 단계라 데이터 부족) 무작위로 4개 선택
-    const topQuestions = scoredQuestions.slice(0, 4);
+    // ⚠️ 수정 포인트 1: 상위 8개의 질문을 선택하도록 변경
+    const topQuestions = scoredQuestions.slice(0, 8);
 
     let finalSelectedQuestions;
 
-    if (topQuestions.every(q => q.relevanceScore === 0) && scoredQuestions.length > 4) {
-        // 모든 상위 질문의 점수가 0이고, 전체 질문 수가 4개 초과면 무작위 선택
-        console.log("모든 성향 질문의 관련성 점수가 0이므로, 무작위로 4개를 선택합니다.");
+    // ⚠️ 수정 포인트 2: 전체 질문 수가 8개를 초과하는지 확인하도록 변경
+    if (topQuestions.every(q => q.relevanceScore === 0) && scoredQuestions.length > 8) {
+        // ⚠️ 수정 포인트 3: 로그 메시지 변경
+        console.log("모든 성향 질문의 관련성 점수가 0이므로, 무작위로 8개를 선택합니다.");
         const shuffledAll = [...this.allPersonalityQuestions].sort(() => 0.5 - Math.random());
-        finalSelectedQuestions = shuffledAll.slice(0, 4);
+        // ⚠️ 수정 포인트 4: 무작위 선택 시에도 8개를 선택하도록 변경
+        finalSelectedQuestions = shuffledAll.slice(0, 8);
     } else {
         finalSelectedQuestions = topQuestions;
     }
 
-    console.log("최종 선택된 4개 성향 질문:", finalSelectedQuestions); // 확인용 로그
+    // ⚠️ 수정 포인트 5: 최종 로그 메시지 변경
+    console.log("최종 선택된 8개 성향 질문:", finalSelectedQuestions);
 
-    // 선택된 4개의 질문 객체를 testSystem에 저장 (나중에 응답 수집 시 활용)
     this.currentPersonalityQuestions = finalSelectedQuestions;
 
     return finalSelectedQuestions;
@@ -1075,7 +1024,7 @@ function renderSituationQuestions() { // <--- 여기서부터 복사 시작
     }
 
     const shuffledPool = [...fullQuestionPool].sort(() => 0.5 - Math.random());
-    const selectedQuestionsForStage = shuffledPool.slice(0, 4);
+    const selectedQuestionsForStage = shuffledPool.slice(0, 5);
 
     testSystem.currentStage2SituationQuestions = selectedQuestionsForStage; 
 
@@ -1424,69 +1373,55 @@ function backToStage2Personality() {
 
 
 // testlogic.js 파일 내
-function proceedToStage3Page1() {
-    startStage3Timer(); // 🕒 3단계 타이머 시작 (기존에 있으실 거예요)
-    autoSaveProgress(); // 현재까지 진행 상황 저장 (기존에 있으실 거예요)
+function startStage3() {
+    startStage3Timer();
+    autoSaveProgress();
 
-    // --- ⬇️ 이 부분이 핵심 수정/추가 내용입니다 ⬇️ ---
-    // 1. 모든 정보가 통합된 3단계 질문 데이터 준비 (최초 1회만 실행)
+    // 1. 3단계 질문 데이터 통합 (최초 1회)
     if (completeStage3Questions === null) {
-        const originalReflectionQuestions = testSystem.getReflectionQuestions(); // 기존 질문 데이터 가져오기
-        // newStage3CategoryInfo는 파일 상단에 정의된 전역 변수를 사용합니다.
+        const originalReflectionQuestions = testSystem.getReflectionQuestions();
         completeStage3Questions = combineQuestionData(originalReflectionQuestions, newStage3CategoryInfo);
-        console.log("✅ 3단계 질문 데이터 통합 완료:", completeStage3Questions);
+        console.log("✅ 3단계 질문 데이터 통합 완료");
     }
 
-    // 2. 사용자 매력 카테고리 점수 계산
-    let userAttractionScores = null;
-    if (testSystem && typeof testSystem.calculateUserCategoryScores === 'function') {
-        userAttractionScores = testSystem.calculateUserCategoryScores();
-        console.log("📊 사용자 매력 카테고리 점수 계산 완료:", userAttractionScores);
-    } else {
-        console.error("오류: testSystem.calculateUserCategoryScores 함수를 찾거나 호출할 수 없습니다. 점수 계산 로직을 확인해주세요.");
-        // 점수 계산 실패 시 예외 처리 (예: 기본 질문으로 넘어감)
-        // 기본 질문 ID 설정 (예시, 실제 ID로 변경 필요)
-        if (stage3SelectedQuestionIds === null) { // 아직 선택된 ID가 없을 때만 기본값 설정
-             stage3SelectedQuestionIds = { firstQuestionId: 1, secondQuestionId: 8 };
-             console.warn("사용자 매력 점수 계산 실패로 기본 질문 ID를 사용합니다:", stage3SelectedQuestionIds);
-        }
-    }
+    // 2. 사용자 매력 점수 계산
+    const userAttractionScores = testSystem.calculateUserCategoryScores();
 
-    // 3. 두 개의 개인화된 3단계 질문 ID 선택 (최초 1회만 실행, userAttractionScores가 있을 때)
-    if (stage3SelectedQuestionIds === null && completeStage3Questions && userAttractionScores) {
-        stage3SelectedQuestionIds = selectTwoPersonalizedStage3Questions(completeStage3Questions, userAttractionScores);
-        console.log("💡 3단계에 표시할 개인화 질문 ID 선택 완료:", stage3SelectedQuestionIds);
+    // 3. 개인화된 질문 ID 3개 선택 (최초 1회)
+    if (stage3SelectedQuestionIds === null) {
+        // ❗❗❗ [핵심 수정!] 2개만 고르던 옛날 함수 대신, 3개를 고르는 새 함수를 호출합니다.
+        stage3SelectedQuestionIds = selectPersonalizedStage3Questions(completeStage3Questions, userAttractionScores);
+        console.log("💡 3단계에 표시할 개인화 질문 ID 3개 선택 완료:", stage3SelectedQuestionIds);
 
-        if (!stage3SelectedQuestionIds) { // selectTwoPersonalizedStage3Questions 함수가 null을 반환한 경우
+        // ID 선택 실패 시 비상 로직
+        if (!stage3SelectedQuestionIds) {
             console.error("⚠️ 개인화된 3단계 질문 ID를 가져오지 못했습니다. 기본 질문 ID로 대체합니다.");
-            stage3SelectedQuestionIds = { firstQuestionId: 1, secondQuestionId: 8 }; // 실제 유효한 기본 ID로 설정
+            stage3SelectedQuestionIds = { firstQuestionId: 1, secondQuestionId: 8, thirdQuestionId: 15 };
         }
-    } else if (stage3SelectedQuestionIds === null) { // completeStage3Questions나 userAttractionScores가 준비 안 된 경우
-         console.error("⚠️ 질문 데이터 또는 사용자 점수 부족으로 개인화 질문 ID를 선택할 수 없습니다. 기본 질문 ID로 대체합니다.");
-         stage3SelectedQuestionIds = { firstQuestionId: 1, secondQuestionId: 8 }; // 실제 유효한 기본 ID로 설정
     }
-    // --- ⬆️ 여기까지가 핵심 수정/추가 내용입니다. ⬆️ ---
+    
+    // 4. 3단계 첫 페이지 렌더링
+    renderStage3Page(1);
 
-    // 4. 3단계 첫 번째 페이지 렌더링
-    // 이제 renderStage3Page 함수는 stage3SelectedQuestionIds에 저장된 ID를 사용합니다.
-    renderStage3Page(1); // 페이지 번호 1 전달
-
-    // 화면 전환 (기존 코드)
-    document.getElementById('responseSummary').style.display = 'none';
+    // 5. 화면 전환
+    document.getElementById('stage3_onboarding').style.display = 'none';
     document.getElementById('stage3_page1').style.display = 'block';
+    console.log('🚀 3단계의 첫 번째 질문 페이지로 시작합니다.');
 }
-    // ... 이후 기존 proceedToStage3Page1 함수 내용 ...
-    // (화면 전환, renderStage3Page 호출 등)
-    // renderStage3Page(1); // 이 부분은 다음 단계에서 수정합니다.
+ function proceedToStage3Page2() {
+    autoSaveProgress();
+    renderStage3Page(2);
+    document.getElementById('stage3_page1').style.display = 'none';
+    document.getElementById('stage3_page2').style.display = 'block';
+}
 
-
-
-
-// renderStage3Page 함수를 찾아서 다음과 같이 수정하세요:
-// testlogic.js 파일 내 (기존 renderStage3Page 함수를 찾아서 수정합니다)
-
-// renderStage3Page 함수를 찾아서 다음과 같이 수정하세요:
-// (기존 함수의 전체 내용을 아래 내용으로 대체하거나, 핵심 로직을 참고하여 수정합니다.)
+// [신규] '3단계 2페이지' -> '3단계 3페이지'로 이동
+function proceedToStage3Page3() {
+    autoSaveProgress();
+    renderStage3Page(3);
+    document.getElementById('stage3_page2').style.display = 'none';
+    document.getElementById('stage3_page3').style.display = 'block';
+}
 function renderStage3Page(pageNumber) { // pageNumber는 1 또는 2
     // 🌟 중요: completeStage3Questions와 stage3SelectedQuestionIds 변수가
     // 이 함수에서 접근 가능한 범위에 있어야 합니다. (보통 전역 변수 또는 testSystem의 속성)
@@ -1549,9 +1484,9 @@ function renderStage3Page(pageNumber) { // pageNumber는 1 또는 2
     // 예시로 title과 pageNumber만 사용했지만, 기존 렌더링 로직을 여기에 적용하세요.
     questionCard.innerHTML = `
         <div class="reflection-question-header">
-            <div class="reflection-question-title"><span class="math-inline">\{questionToDisplay\.title\}</div\>
-<div class\="reflection\-question\-number"\></span>{pageNumber}/2</div>
-        </div>
+    <div class="reflection-question-title">${questionToDisplay.title}</div>
+    <div class="reflection-question-number">${pageNumber}/2</div>
+</div>
         
         <div class="attraction-guide">
             <div class="attraction-guide-icon">✨</div>
@@ -1570,7 +1505,7 @@ function renderStage3Page(pageNumber) { // pageNumber는 1 또는 2
                         </div>
                     
                     <div class="helper-buttons">
-                        <button class="helper-btn skip" onclick="skipQuestion(${questionToDisplay.id}, ${index})">⏭️ 패스하기</button>
+                       
                         <button class="helper-btn" onclick="showExample(${questionToDisplay.id}, ${index})">💡 예시 보기</button>
                         <button class="helper-btn" onclick="showTemplate(${questionToDisplay.id}, ${index})">📝 템플릿</button>
                         <button class="helper-btn attraction-keyword-btn" onclick="showAttractionKeywords(${questionToDisplay.id}, ${index})">
@@ -1635,90 +1570,79 @@ function backToStage3Page1() {
     document.getElementById('stage3_page1').style.display = 'block';
 }
 
+function backToStage3Page2() {
+    document.getElementById('stage3_page3').style.display = 'none';
+    document.getElementById('stage3_page2').style.display = 'block';
+}
 // ==================== 3단계 → 설문조사 ====================
 function proceedToSurvey() {
-   
     completeStage3Timer();
-
-    autoSaveProgress();
-    
-    // 3단계 응답 수집 (2개 그룹만)
-    collectStage3Responses();
-    
-    // 설문조사 렌더링
+    collectStage3Responses(); // 답변 수집 후
+    autoSaveProgress(); // 저장
     renderSurvey();
     
-    // 화면 전환
-    document.getElementById('stage3_page2').style.display = 'none';
+    document.getElementById('stage3_page3').style.display = 'none'; // 3페이지를 숨김
     document.getElementById('surveyStage').style.display = 'block';
 }
 
-// testlogic.js 파일 내 collectStage3Responses 함수 내부 수정
+
+// testlogic.js 파일에서 기존 collectStage3Responses 함수를 찾아 이 코드로 완전히 교체합니다.
+
+// ✅ testlogic.js 파일에 있는 모든 collectStage3Responses 함수를 삭제하고, 이 코드로 교체해주세요.
 
 function collectStage3Responses() {
-    const responses = [];
-    // 🌟 중요: 여기서도 'completeStage3Questions'를 사용하는 것이 더 일관적입니다.
-    //    하지만 일단 ID만 정확히 가져오도록 먼저 수정하고, 이 부분은 나중에 더 개선할 수 있습니다.
-    const questions = completeStage3Questions || testSystem.getReflectionQuestions(); // completeStage3Questions 우선 사용
+    const responses = {}; 
+    const questions = completeStage3Questions || [];
 
-    // 첫 번째 표시된 질문 (stage3SelectedQuestionIds.firstQuestionId 사용)
-    if (stage3SelectedQuestionIds && stage3SelectedQuestionIds.firstQuestionId) {
-        const firstQuestionId = stage3SelectedQuestionIds.firstQuestionId;
-        const firstGroup = questions.find(q => q.id === firstQuestionId);
-        if (firstGroup) {
-            const groupResponses = [];
-            firstGroup.questions.forEach((question, subIndex) => {
-                const textarea = document.getElementById(`reflection_${firstQuestionId}_${subIndex}`);
-                groupResponses.push({
-                    question: question,
-                    answer: textarea ? textarea.value.trim() || "[답변 없음]" : "[답변 없음]"
-                });
-            });
-            responses.push({
-                id: firstGroup.id, // ID도 함께 저장 (선택 사항)
-                groupTitle: firstGroup.title,
-                responses: groupResponses
-            });
-        }
-    } else {
-        console.warn("[collectStage3Responses] 첫 번째 질문 ID를 찾을 수 없습니다.");
+    if (!stage3SelectedQuestionIds) {
+        console.error("⚠️ [collectStage3Responses] 선택된 3단계 질문 ID가 없어 답변을 수집할 수 없습니다.");
+        testSystem.stage3_responses = responses;
+        return;
     }
 
-    // --- ⬇️ 이 부분을 수정합니다 ⬇️ ---
-    // AI가 선택한 질문 수집 (이제 두 번째로 표시된 질문을 의미)
-    if (stage3SelectedQuestionIds && stage3SelectedQuestionIds.secondQuestionId) { // 🌟 stage3SelectedQuestionIds 사용 확인
-        const secondQuestionId = stage3SelectedQuestionIds.secondQuestionId; // 🌟 미리 선택된 두 번째 질문 ID 사용
-        // --- ⬆️ 여기까지 수정 ⬆️ ---
-        const selectedGroup = questions.find(q => q.id === secondQuestionId);
-        if (selectedGroup) {
-            const groupResponses = [];
-            selectedGroup.questions.forEach((question, subIndex) => {
-                const textarea = document.getElementById(`reflection_${secondQuestionId}_${subIndex}`);
-                groupResponses.push({
-                    question: question,
-                    answer: textarea ? textarea.value.trim() || "[답변 없음]" : "[답변 없음]"
-                });
+    // 3개의 질문 ID를 모두 수집 대상으로 지정합니다.
+    const questionIdsToCollect = [
+        stage3SelectedQuestionIds.firstQuestionId,
+        stage3SelectedQuestionIds.secondQuestionId,
+        stage3SelectedQuestionIds.thirdQuestionId
+    ];
+
+    questionIdsToCollect.forEach(questionId => {
+        if (!questionId) return;
+
+        const questionGroup = questions.find(q => q.id === questionId);
+        if (questionGroup) {
+            const subResponses = {};
+            const keywords = {};
+
+            questionGroup.questions.forEach((subQuestionText, subIndex) => {
+                // ❗❗❗ [핵심!] div에서 답변을 가져오기 위해 .innerHTML을 사용합니다.
+                const answerBox = document.getElementById(`reflection_${questionId}_${subIndex}`);
+                subResponses[subIndex] = answerBox ? answerBox.innerHTML.trim() : "[답변 없음]";
+
+                // 키워드도 함께 수집합니다.
+                const keywordsContainer = document.getElementById(`selectedKeywords_${questionId}_${subIndex}`);
+                if (keywordsContainer) {
+                    const keywordTags = keywordsContainer.querySelectorAll('.keyword-tag');
+                    keywords[subIndex] = Array.from(keywordTags).map(tag => tag.textContent.replace('×', '').trim());
+                }
             });
-            responses.push({
-                id: selectedGroup.id, // ID도 함께 저장 (선택 사항)
-                groupTitle: selectedGroup.title,
-                responses: groupResponses
-            });
+
+            responses[questionId] = {
+                id: questionGroup.id,
+                groupTitle: questionGroup.title,
+                responses: subResponses,
+                keywords: keywords
+            };
         }
-    } else {
-        console.warn("[collectStage3Responses] 두 번째 질문 ID를 찾을 수 없습니다.");
-    }
+    });
     
     testSystem.stage3_responses = responses;
-    console.log("📝 3단계 응답 수집 완료 (새로운 로직):", testSystem.stage3_responses);
+    console.log("📝 3단계 응답 3개 모두 수집 완료:", testSystem.stage3_responses);
 }
 
 // ==================== 도우미 기능들 ====================
-function skipQuestion(groupId, subIndex) {
-    const textarea = document.getElementById(`reflection_${groupId}_${subIndex}`);
-    textarea.value = "[패스함]";
-    textarea.style.background = "#f7fafc";
-}
+
 // 기존 코드는 그대로 두고, 아래 함수들을 추가하세요:
 
 
@@ -1911,8 +1835,7 @@ function renderReflectionQuestions(questionSet, containerId) {
                             <button class="helper-btn" onclick="showAttractionKeywords()">
                                 ✨ 매력 키워드 선택
                             </button>
-                            <button class="helper-btn skip">⏭️ 건너뛰기</button>
-                            <button class="helper-btn bookmark">🔖 나중에 작성</button>
+                        
                         </div>
                         <textarea 
                             class="reflection-textarea" 
@@ -1940,13 +1863,6 @@ function insertKeyword(keyword) {
     }
 }
 
-function bookmarkQuestion(groupId, subIndex) {
-    const textarea = document.getElementById(`reflection_${groupId}_${subIndex}`);
-    textarea.style.borderColor = "#f6ad55";
-    textarea.style.background = "#fef5e7";
-    
-    alert("나중에 답할 질문으로 표시되었습니다.");
-}
 
 function closeModal(modalId) {
     document.getElementById(modalId).style.display = 'none';
@@ -2040,25 +1956,6 @@ function checkSurveyCompletion() {
 
 
 // 최종 완료 페이지 렌더링
-function renderFinalComplete() {
-    const container = document.getElementById('completeContent');
-    container.innerHTML = `
-        <div style="text-align: center; padding: 40px 20px;">
-            <h3 style="color: #5a67d8; margin-bottom: 20px;">소중한 의견을 주셔서 감사합니다!</h3>
-            <p style="margin-bottom: 30px; color: #718096;">
-                여러분의 피드백은 ASTER 프로그램을 더욱 발전시키는 데 큰 도움이 됩니다.<br>
-                매력 탐구 여정이 계속되기를 응원합니다! ✨
-            </p>
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
-                <p style="font-size: 14px; color: #718096;">
-                    선택하신 매력 카테고리: <strong>${testSystem.stage1_selections.join(', ')}</strong><br>
-                    완료 시간: ${new Date().toLocaleString('ko-KR')}
-                </p>
-            </div>
-            <button class="btn" onclick="location.reload()">새로운 테스트 시작하기</button>
-        </div>
-    `;
-}
 
 // ==================== 모달 외부 클릭시 닫기 ====================
 window.onclick = function(event) {
@@ -2117,27 +2014,33 @@ async function saveToFirebase(testData) {
 }
 
 // 현재 진행 상황을 Firebase에 자동 저장
+// testlogic.js 파일에서 이 함수를 찾아 아래 내용으로 전체를 교체해주세요.
+
 function autoSaveProgress() {
-    const currentData = {
-        userId: localStorage.getItem('userId') || generateUserId(),
-        stage1_categories: JSON.parse(localStorage.getItem('selectedCategories') || '[]'),
-        stage2_situation: JSON.parse(localStorage.getItem('situationResponses') || '[]'),
-        stage2_personality: JSON.parse(localStorage.getItem('personalityResponses') || '[]'),
-        stage3_reflections: JSON.parse(localStorage.getItem('reflectionResponses') || '[]'),
-        survey_responses: JSON.parse(localStorage.getItem('surveyResponses') || '[]'),
-        completed: false,
-        lastUpdated: new Date()
-    };
-    
-    // 사용자 ID가 없으면 생성
+    // 사용자 ID가 없다면 생성하여 localStorage에 저장
     if (!localStorage.getItem('userId')) {
-        const newUserId = generateUserId();
-        localStorage.setItem('userId', newUserId);
-        currentData.userId = newUserId;
+        localStorage.setItem('userId', generateUserId());
+    }
+    const userId = localStorage.getItem('userId');
+
+    // 🌟 testSystem 객체에서 직접 최신 데이터를 가져와 completeTestData 객체를 업데이트
+    completeTestData.userId = userId;
+    completeTestData.timestamp = new Date().toISOString();
+    completeTestData.stage1_selections = testSystem.stage1_selections || [];
+    completeTestData.stage2_situation_responses = testSystem.stage2_situation_responses || [];
+    completeTestData.stage2_personality_responses = testSystem.stage2_personality_responses || [];
+    // stage3_responses는 collectStage3Responses 함수에서 이미 testSystem에 저장했으므로, 바로 할당
+    completeTestData.stage3_responses = testSystem.stage3_responses || {}; 
+    
+    // 현재 진행 상황을 로컬 스토리지에 '하나의 객체'로 저장 (더 안정적)
+    try {
+        localStorage.setItem('asterProgressData', JSON.stringify(completeTestData));
+        console.log("💾 진행 상황 자동 저장 완료:", completeTestData);
+    } catch (e) {
+        console.error("localStorage 저장 실패:", e);
     }
     
-    console.log("자동 저장 시도:", currentData);
-    saveToFirebase(currentData);
+    // (참고) Firebase에 중간 저장을 하고 싶다면 이 곳에 saveToFirebase(completeTestData) 호출
 }
 
 // 테스트용 데이터 저장 함수 (바로 테스트해볼 수 있도록)
@@ -2355,327 +2258,6 @@ function closeModal(modalId) {
 // 기존 코드 마지막 부분에 이어서 추가:
 
 // ==================== 29개 새로운 성찰 질문 데이터 ====================
-AttractionTestSystem.prototype.getReflectionQuestions = function() {
-    return [
-        // 1. 경험 탐구 질문 그룹들 (7개)
-        {
-            id: 1,
-            category: "경험탐구",
-            type: "실패좌절극복",
-            title: "실패와 좌절을 통한 성장",
-            questions: [
-                "혹시 기대와 다른 결과를 마주했거나 '실패'라고 느꼈지만, 오히려 그 일을 통해 나 자신을 더 깊이 알게 되거나 새로운 가능성을 발견했던 경험이 있나요? 있다면 먼저 그때의 상황을 편하게 이야기해주세요.",
-                "그런 좌절 속에서도 다시 일어설 수 있었던 당신만의 강점이나 능력이 무엇이라고 생각하세요?",
-                "그리고 그 경험은 지금의 당신에게 어떤 생각이나 교훈을 남겼나요?"
-            ]
-        },
-        {
-            id: 2,
-            category: "경험탐구", 
-            type: "성취경험",
-            title: "자부심을 느꼈던 성취",
-            questions: [
-                "당신의 삶에서 가장 기억에 남고 자부심을 느꼈던 특별한 성취 경험을 자세히 이야기해주시겠어요?",
-                "그 목표는 어떤 계기나 마음으로 시작하게 되셨나요? 혹시 목표를 이루는 과정 중에 어려웠던 점은 없었나요? 만약 있었다면 무엇이었나요?",
-                "어려움이 있었다면, 그것을 이겨내고 빛나는 결과를 만들기 위해 당신의 어떤 능력이나, 좋은 면이 가장 큰 힘이 되었나요?",
-                "그 성공은 지금 당신에게 어떤 의미로 남아 있나요?"
-            ]
-        },
-        {
-            id: 3,
-            category: "경험탐구",
-            type: "어려운상황대처", 
-            title: "예상치 못한 상황 대처",
-            questions: [
-                "혹시 예상치 못한 어려움이나 당황스러운 상황에 놓였던 경험이 있다면, 먼저 그때 어떤 상황이었고 어떤 감정을 느꼈는지 편하게 이야기해주세요.",
-                "그런 상황을 잘 헤쳐나가거나 마음을 다잡기 위해, 당신의 어떤 능력을 활용했던 것 같나요?",
-                "그 경험을 통해 나 자신에 대해 '아, 나에게 이런 면도 있구나' 하고 새롭게 알게 된 점이 있나요?"
-            ]
-        },
-        {
-            id: 4,
-            category: "경험탐구",
-            type: "일상매력발견",
-            title: "일상 속 자연스러운 매력",
-            questions: [
-                "혹시 당신에게는 너무나 일상적인 일이어서, 스스로는 '특별하다'고 잘 생각하지 않지만, 다른 사람들은 종종 칭찬하거나 의외로 고마워하는 당신만의 행동이 있나요?",
-                "그 일을 '아, 나 이런 것도 잘하네?' 하고 처음 느끼게 된 순간이나, 그것을 하면서 즐거움을 느꼈던 경험을 자세히 들려주세요.",
-                "그렇게 발견한 일상 속 매력을 앞으로 어떻게 더 활용하거나 발전시키고 싶으신가요?"
-            ]
-        },
-        {
-            id: 5,
-            category: "경험탐구",
-            type: "주도적개선",
-            title: "주도적으로 개선한 경험", 
-            questions: [
-                "누가 먼저 부탁하지 않았는데도, '이건 내가 한번 해봐야겠다!' 싶어서 먼저 나서서 어떤 일(아주 작은 일도 괜찮아요)을 더 좋게 만들려고 했던 경험이 있다면 먼저 그 이야기를 들려주세요.",
-                "어떤 마음 혹은 어떤 목표 때문에 당신은 그렇게 행동했나요?",
-                "그 행동을 통해, 당신의 좋은 성향이나 평소 중요하게 생각하는 가치을 발견하거나 다시 한번 느끼게 되었나요? 그 성향이나 가치는 무엇인가요?"
-            ]
-        },
-        {
-            id: 6,
-            category: "경험탐구",
-            type: "꾸준한노력",
-            title: "꾸준한 노력으로 이룬 성취",
-            questions: [
-                "하나의 목표를 향해 꽤 긴 시간 동안 꾸준히 노력하여, 마침내 무언가를 이룬 경험(예: 악기 하나쯤 다루게 된 것, 외국어 공부, 오래 준비한 프로젝트 마무리 등)이 있다면 그 성취에 대해 이야기해주세요.",
-                "그 긴시간을 포기하지 않고 계속 나아갈 수 있었던 점에 대해 당신의 어떤 강점이 도움이 된 것 같나요?",
-                "그 성취를 이루고 나서, 당신의 삶이나 생각에 어떤 긍정적인 변화가 찾아왔나요?"
-            ]
-        },
-        {
-            id: 7,
-            category: "경험탐구",
-            type: "용기있는시도",
-            title: "용기를 내어 새로운 시도",
-            questions: [
-                "일상에서 평소 나라면 주저 했을 법한 작은 일에 용기를 내어 시도해본 경험이 있나요?(예: 새로운 길로 가보기, 평소 안 하던 스타일 시도해보기 등) 어떤 경험 이었나요?",
-                "당신에게 존재하는 어떤 면이 발휘되어 용기를 낼 수 있었을까요?",
-                "그 경험을 통해 나 자신이나 나의 강점, 내적인 매력에 대해 새롭게 느끼거나 깨닫게 된 점이 있나요?"
-            ]
-        },
-
-        // 2. 가치관 탐색 질문 그룹들 (7개)
-        {
-            id: 8,
-            category: "가치탐구",
-            type: "소중한기준",
-            title: "소중한 기준과 생각",
-            questions: [
-                "혹시 다른 건 몰라도 이것만큼은 꼭 지키고 싶다고 마음속으로 다짐하는, 당신만의 소중한 기준이나 생각이 있나요? 있다면 어떤 것인지 이야기해주세요.",
-                "그런 기준이나 생각을 갖게 된 특별한 계기나, 영향을 받은 인물이 있다면 그 이야기를 들려주실 수 있나요?",
-                "그 기준이나 생각이 당신의 삶에 긍정적인 영향을 줬다고 생각하시나요? 그렇다면 어떤 면에서 긍정적인 영향을 받았나요?"
-            ]
-        },
-        {
-            id: 9,
-            category: "가치탐구",
-            type: "선택의갈등",
-            title: "가치관의 갈등과 선택",
-            questions: [
-                "어떤 것을 선택해야 할지, 마음속에서 중요하다고 생각하는 두 가지가 부딪혔던 순간이 있었나요? 그때 어떤 상황이었는지 알려주세요.",
-                "그때 어떤 고민들을 하셨고, 결국 어떤 마음으로 하나의 선택을 내리셨는지 궁금해요.",
-                "그 결정을 내리는 데 당신이 중요시여기는 가치 중 어떤 점이 가장 큰 영향을 주었다고 생각하시나요?"
-            ]
-        },
-        {
-            id: 10,
-            category: "가치탐구",
-            type: "대인관계태도",
-            title: "대인관계에서의 소중한 태도",
-            questions: [
-                "다른 사람들을 대할 때, 당신이 가장 중요하게 여기고 '이렇게 해야지' 하고 지키려고 하는 생각이나 태도가 있으신가요?",
-                "그러한 생각이나 태도를 갖게 된 특별한 이유나 계기가 있을까요?",
-                "그런 마음가짐을 잘 지키는 당신 자신을 볼 때, 스스로 '나 이런 점은 괜찮네!' 하고 느끼는 자신의 내적인 매력은 무엇인가요?"
-            ]
-        },
-        {
-            id: 11,
-            category: "가치탐구",
-            type: "변화속다짐",
-            title: "변화 속에서도 지킨 소중한 것",
-            questions: [
-                "인생의 큰 변화를 겪거나 예상치 못한 어려움 속에서도, '이것만은 꼭 놓치지 말아야지' 했던 소중한 생각이나 다짐이 있나요? 있다면 어떤 것이었나요?",
-                "그 복잡하고 혼란스러운 상황에서도 그것을 꿋꿋이 지켜낼 수 있었던 당신의 내면의 힘은 무엇이었다고 생각하세요?"
-            ]
-        },
-        {
-            id: 12,
-            category: "가치탐구", 
-            type: "열정분야",
-            title: "열정을 쏟는 분야",
-            questions: [
-                "혹시 시간 가는 줄 모르고 푹 빠져서 열정을 쏟는 분야나 활동이 있나요? 있다면 어떤 것인지 먼저 알려주세요.",
-                "그토록 열정적으로 임하게 되는 이유나 당신에게 중요한 어떤 가치가 있으신가요?",
-                "그럼 그 과정에서 당신이 발견하게 되는 자신의 강점이나, 매력은 무엇인가요?"
-            ]
-        },
-        {
-            id: 13,
-            category: "가치탐구",
-            type: "미래가치관",
-            title: "앞으로 더 중요하게 여기고 싶은 가치",
-            questions: [
-                "지금도 충분히 멋지지만, 앞으로 당신의 삶에서 '이런 생각 혹은 마음가짐은 더 중요하게 여기고 싶다' 혹은 '이런 모습으로 살아가고 싶다'고 바라는 모습이 있나요?",
-                "그것을 완전히 당신의 것으로 만들기 위해, 당신 안에 있는 어떤 잠재력이나 강점을 더 믿고 발전시켜나가고 싶으신가요?"
-            ]
-        },
-        {
-            id: 14,
-            category: "가치탐구",
-            type: "결과수용",
-            title: "결과를 담담하게 수용하는 태도",
-            questions: [
-                "어떤 일의 결과가 생각만큼 좋지 않았을 때, 그 상황을 다른 누구의 탓으로 돌리기보다 결과를 담담하게 마주했던 경험이 있나요? 그때 어떤 마음으로 상황을 받아들였는지 이야기해주세요.",
-                "그렇게 상황과 결과를 받아드렸을 때의 경험이 당신에게 성장의 원동력이 되거나 숨겨진 모습의 발견으로 이어 졌었나요? 이어 졌다면 어떤 부분에서 성장하게 되었나요?"
-            ]
-        },
-
-        // 3. 성장 탐구 질문 그룹들 (8개)
-        {
-            id: 15,
-            category: "성장탐구",
-            type: "바라는성장",
-            title: "바라는 성장의 모습",
-            questions: [
-                "앞으로 1년 뒤, 혹은 조금 더 먼 미래에 '아, 나 정말 성장 했구나'라고 느끼고 싶은, 당신이 가장 바라는 성장한 모습은 어떤 모습인가요?",
-                "그 멋진 모습을 현실로 만들기 위해, 지금 당신 안에 있는 어떤 강점이나 잠재력을 더 발전시키고 싶으신가요?"
-            ]
-        },
-        {
-            id: 16,
-            category: "성장탐구",
-            type: "새로운배움",
-            title: "새롭게 배우고 싶은 분야",
-            questions: [
-                "만약 무엇이든 새롭게 배울 수 있는 충분한 시간과 기회가 주어진다면, 가장 먼저 배우거나 경험해보고 싶은 분야는 무엇인가요?",
-                "그것을 배우고 싶은 가장 큰 이유는 당신의 어떤 점(예: 지금 가진 장점을 더 키우고 싶어서, 아니면 새로운 가능성을 열고 싶어서) 때문인가요?",
-                "그 배움이 당신의 어떤 내적인 강점을 채워줄 수 있을 거라고 생각하시나요?"
-            ]
-        },
-        {
-            id: 17,
-            category: "성장탐구",
-            type: "개선하고싶은점",
-            title: "개선하고 싶은 나의 모습",
-            questions: [
-                "지금 당신의 모습 중에서, '이 부분은 앞으로 이렇게 더 좋아지면 좋겠다'고 스스로 변화를 바라는 지점이 있다면 어떤 것인가요?",
-                "만약 그 부분이 당신이 바라는 대로 긍정적으로 변화한다면, 당신의 일상이나 마음은 어떻게 달라질 것 같나요?",
-                "만약 그 부분의 변화로 인해 잃게 될 수도 있는 현재의 장점에 대해 생각해 보셨나요? 내가 바라는 변화로 인해 잃게 될지도 모르는 현재 내가 가지고 있는 장점에 대해 작성해주세요"
-            ]
-        },
-        {
-            id: 18,
-            category: "성장탐구",
-            type: "좋은영향",
-            title: "세상에 주고 싶은 좋은 영향",
-            questions: [
-                "앞으로 당신이 주변 사람들이나 세상에 좋은 영향을 주고 싶다는 생각을 해본 적 있나요? 있다면 어떤 영향인가요?",
-                "그러한 영향을 주기 위해, 당신이 이미 가지고 있거나 더욱 발전시키고 싶은 좋은 면이나 뛰어난 능력은 무엇인가요?",
-                "그 매력을 어떤 멋진 방식으로 활용하여 좋은 영향을 주고 싶으신가요?"
-            ]
-        },
-        {
-            id: 19,
-            category: "성장탐구",
-            type: "타인으로부터배움",
-            title: "타인으로부터 배우고 싶은 점",
-            questions: [
-                "혹시 최근에 다른 사람의 모습이나 행동을 보면서 '아, 나도 저런 점은 배우고 싶다!' 또는 '참 괜찮다'라고 마음속으로 생각했던 순간이 있나요?",
-                "그 사람의 어떤 매력이 당신에게 그런 생각을 하게 만들었나요?",
-                "만약 그 좋은 점을 당신의 것으로 만들고 싶다면, 어떤 작은 시도부터 해볼 수 있을까요?"
-            ]
-        },
-        {
-            id: 20,
-            category: "성장탐구",
-            type: "외부평가영향",
-            title: "외부 평가의 영향과 내면의 목소리",
-            questions: [
-                "혹시 다른 사람들의 반응이나 평가(예: 칭찬이나 아쉬운 소리 등)에 따라 나의 기분이나 나 자신에 대한 생각이 크게 영향을 받는다고 느낄 때가 있나요? 있다면 주로 어떤 경우에 그런 것 같나요?",
-                "그렇다면, 외부의 시선 때문에 스스로 충분히 인정해주지 못했지만, '사실 이건 내가 정말 잘하는 부분인데' 혹은 '이런 내 모습이 나는 참 괜찮은데' 하고 생각해봤던 나만의 강점이나 매력이 있나요?",
-                "앞으로 다른 사람의 평가보다는 당신 스스로의 목소리에 더 귀 기울여 그 매력을 믿고 키워나간다면, 당신의 일상이나 자신을 바라보는데에 어떤 변화가 찾아올 것이라고 생각하시나요?"
-            ]
-        },
-        {
-            id: 21,
-            category: "성장탐구",
-            type: "자기엄격성",
-            title: "스스로에게 엄격한 모습",
-            questions: [
-                "스스로에게 너무 엄격해서, 다른 사람이 보기엔 충분히 괜찮거나 좋은 점인데도 '이건 별거 아니야'라며 넘겨버리거나 스스로 낮춰 보았던 모습이나 생각있나요? 있다면 어떤 부분인가요?",
-                "만약 그런 당신의 좋은 점을 충분히 인정해주지 못했다면, 그 이유는 무엇이었을까요? (예: 과거의 경험, 타인의 평가, 완벽주의 성향 등)",
-                "이제 그 '별거 아니라고 생각했던' 당신의 그 모습을 제대로 인식하고 '소중한 매력'으로 인정해준다면, 당신의 일상이나 자신을 바라보는데에 어떤 변화가 찾아올 것이라고 생각하시나요?"
-            ]
-        },
-        {
-            id: 22,
-            category: "성장탐구",
-            type: "반전매력",
-            title: "아쉬운 점의 반전 매력",
-            questions: [
-                "혹시 스스로 생각하기에 '이건 나의 아쉬운점 이야' 또는 '이것 때문에 가끔 손해를 보거나 힘들어'라고 여기는 당신의 어떤 모습이나 성향이 있나요? 있다면 어떤 부분인지 편하게 이야기해주세요.",
-                "그렇다면, 그 '아쉬운 점'이라고 생각했던 모습이 혹시 다른 상황이나 다른 관점에서 보면 오히려 긍정적인 역할을 하거나, 더 좋은 결과를 만들 수 있는 가능성에 대해 생각해 본 적 있나요? (예를 들어, '너무 생각이 많아 결정을 못 한다'는 것이 '신중하고 다각도로 고민한다'는 것일 수도 있는 것처럼요.)",
-                "만약 당신의 그 '아쉬운 점' 이면에 숨겨진 긍정적인 면이나 가능성을 발견한다면, 그것을 당신의 새로운 '반전 매력'과 같은 이름을 붙여 인정해준다면, 당신의 일상이나 자신을 바라보는데에 어떤 변화가 찾아올 것이라고 생각하시나요?"
-            ]
-        },
-
-        // 4. 관계 탐구 질문 그룹들 (7개)
-        {
-            id: 23,
-            category: "관계탐구",
-            type: "새로운만남",
-            title: "새로운 사람들과의 만남",
-            questions: [
-                "새로운 사람들을 만나거나 여러 사람이 모인 자리에서, 어색함을 풀고 자연스럽게 대화를 시작하는 당신만의 특별한 방법이 있나요? 있다면 어떤 것인가요?",
-                "그런 당신의 먼저 다가가는 용기나 다른 사람을 편안하게 해주는 능력 덕분에 좋은 관계로 발전했던 경험이 있다면 이야기해주세요."
-            ]
-        },
-        {
-            id: 24,
-            category: "관계탐구",
-            type: "분위기전환",
-            title: "분위기를 긍정적으로 전환하는 능력",
-            questions: [
-                "혹시 조금 무겁거나 어색했던 분위기를 당신의 재치 있는 말이나 행동으로 기분 좋게 전환했던 경험이 있나요? 그때 어떤 상황이었는지 먼저 들려주세요.",
-                "그 순간, 당신의 어떤 장점이나 매력이 빛을 발했고, 그 덕분에 분위기가 어떻게 긍정적으로 바뀌었나요?"
-            ]
-        },
-        {
-            id: 25,
-            category: "관계탐구",
-            type: "약속과책임",
-            title: "약속과 책임을 지키는 마음",
-            questions: [
-                "친구와의 약속을 지키거나 단체 활동에서 맡은 역할에 책임을 다하는 것이 당신에게 중요한가요? 그 이유는 무엇인가요?",
-                "혹시 어려운 상황에서도 그 약속이나 책임을 끝까지 지키려고 노력했던 경험이 있다면, 그 경험을 통해 스스로 발견하게 된 당신의 강점은 무엇이었나요?"
-            ]
-        },
-        {
-            id: 26,
-            category: "관계탐구",
-            type: "다른관점수용",
-            title: "다른 관점을 수용하는 태도",
-            questions: [
-                "나와 생각이 아주 다른 사람과 의견을 나누어야 할 때 그때 상대방의 입장을 이해하고 존중하며 대화를 이끌어가기 위해 노력을 해본 경험이 있나요?",
-                "다른 관점을 받아들이고 함께 좋은 대화를 만들려고 할 때, 당신의 어떤 태도나 자세가 도움이 되었다고 생각하세요?"
-            ]
-        },
-        {
-            id: 27,
-            category: "관계탐구",
-            type: "함께하는경험",
-            title: "사람들과 함께 만들어낸 즐거운 경험",
-            questions: [
-                "다른 사람들과 함께 무언가를 계획하고 실행해서, 모두가 '정말 즐거웠다!'고 느꼈던 특별한 경험(예: 함께 준비한 이벤트, 여행 등)이 있다면 자세히 이야기해주세요.",
-                "그 과정에서 사람들을 하나로 모이고 즐거운 분위기가 형성 될 수 있었던 데에 당신이 어떤 역할을 담당 하였나요? 그리고 그 역할을 수행함에 있어 당신의 어떤 내적인 매력이 도움이 되었나요?"
-            ]
-        },
-        {
-            id: 28,
-            category: "관계탐구",
-            type: "관계회복",
-            title: "관계 회복을 위한 용기",
-            questions: [
-                "혹시 친구나 가까운 사람과 오해가 생겨 마음이 상했지만, 먼저 다가가 관계를 다시 좋게 만들려고 노력했던 경험이 있나요? 있다면 어떤 상황이었나요?",
-                "그때 당신의 어떤 마음이나 생각이 그런 용기 있는 행동을 가능하게 한 것 같나요?",
-                "그런 선택을 할 수 있었던 데에 자신의 어떤 면이 도움이 되었던 것 같나요?"
-            ]
-        },
-        {
-            id: 29,
-            category: "관계탐구",
-            type: "위로와지지",
-            title: "타인에게 위로와 힘을 주는 능력",
-            questions: [
-                "주변 사람이 힘든 시간을 보내고 있을 때, 당신의 따뜻한 말이나 행동으로 그에게 힘을 주었던 경험이 있다면 들려주세요.",
-                "당신의 어떤 태도나 자세 덕분에 위로를 받은 사람이 기운을 차리고 용기를 얻은 것 같으신가요? 그리고 그때의 기분은 어땠나요?"
-            ]
-        }
-    ];
-};
 
 // ==================== AI 개인화 질문 선택 알고리즘 ====================
 function selectPersonalizedQuestion() {
@@ -2786,36 +2368,31 @@ function selectExperienceQuestion() {
 // testlogic.js 파일 내
 function renderStage3Page(pageNumber) {
     if (!completeStage3Questions || !stage3SelectedQuestionIds) {
-        console.error("⚠️ [renderStage3Page] 3단계 질문 데이터 또는 선택된 질문 ID가 준비되지 않아 페이지를 렌더링할 수 없습니다.");
-        const containerId = pageNumber === 1 ? 'reflectionContainer1' : 'reflectionContainer2';
-        const container = document.getElementById(containerId);
-        if(container) container.innerHTML = "<p>질문을 불러오는 데 매우 심각한 문제가 발생했습니다. 첫 단계부터 다시 시도해주세요.</p>";
+        console.error("⚠️ [renderStage3Page] 3단계 질문 데이터 또는 ID가 준비되지 않았습니다.");
         return;
     }
 
     let questionIdToRender;
-    const containerId = pageNumber === 1 ? 'reflectionContainer1' : 'reflectionContainer2';
+    const containerId = `reflectionContainer${pageNumber}`;
 
     if (pageNumber === 1) {
         questionIdToRender = stage3SelectedQuestionIds.firstQuestionId;
     } else if (pageNumber === 2) {
         questionIdToRender = stage3SelectedQuestionIds.secondQuestionId;
+     } else if (pageNumber === 3) { 
+        questionIdToRender = stage3SelectedQuestionIds.thirdQuestionId;
+        containerId = 'reflectionContainer3'; // 3번째 페이지의 컨테이너 ID
     } else {
-        console.error("[renderStage3Page] 잘못된 페이지 번호입니다:", pageNumber);
-        const container = document.getElementById(containerId); // containerId가 정의되었는지 확인
-        if(container) container.innerHTML = `<p>잘못된 페이지 요청입니다.</p>`;
+        console.error("[renderStage3Page] 잘못된 페이지 번호:", pageNumber);
         return;
     }
 
-    if (!questionIdToRender) { // ID가 null 이거나 undefined 일 경우
-        console.error(`⚠️ [renderStage3Page] ${pageNumber}페이지에 해당하는 질문 ID를 찾을 수 없습니다. stage3SelectedQuestionIds:`, stage3SelectedQuestionIds);
-        const container = document.getElementById(containerId);
-        if(container) container.innerHTML = `<p>${pageNumber}페이지 질문을 불러오는 데 실패했습니다. 선택된 질문 ID를 확인해주세요. (ID: ${questionIdToRender === null ? 'null' : 'undefined'})</p>`;
+    if (!questionIdToRender) {
+        console.error(`⚠️ ${pageNumber}페이지에 해당하는 질문 ID를 찾을 수 없습니다.`);
         return;
     }
-
-    // 이제 questionIdToRender와 pageNumber를 renderReflectionQuestion에 전달합니다.
-    // 실제 질문 객체는 renderReflectionQuestion 내부에서 completeStage3Questions를 사용해 찾습니다.
+    
+    // 이제 실제 질문 렌더링은 renderReflectionQuestion 함수에 위임합니다.
     renderReflectionQuestion(questionIdToRender, containerId, pageNumber);
 }
 
@@ -2828,7 +2405,6 @@ function renderReflectionQuestion(questionId, containerId, pageNumber) {
     }
     container.innerHTML = ''; // 기존 내용 초기화
 
-    // 🌟 중요: 여기서 testSystem.getReflectionQuestions() 대신 'completeStage3Questions'를 사용합니다.
     if (!completeStage3Questions) {
         console.error('❌ [renderReflectionQuestion] completeStage3Questions 데이터가 준비되지 않았습니다.');
         container.innerHTML = "<p>질문 데이터를 불러오는 중 오류가 발생했습니다. 새로고침하거나 이전 단계로 돌아가세요.</p>";
@@ -2844,16 +2420,16 @@ function renderReflectionQuestion(questionId, containerId, pageNumber) {
 
     console.log(`📝 ${pageNumber}페이지 질문 렌더링 (ID: ${questionId}):`, questionToDisplay.title);
 
-    // 아래 HTML 생성 부분은 사용자님의 기존 코드와 매우 유사할 것입니다.
-    // questionToDisplay 객체가 모든 정보(title, questions, examples 등)를 가지고 있으므로,
-    // 이 객체의 속성을 사용하여 HTML을 만듭니다.
     const questionCard = document.createElement('div');
     questionCard.className = 'reflection-question-card';
+    
+    // ▼▼▼ 이 부분이 전체적으로 올바르게 교체됩니다. ▼▼▼
     questionCard.innerHTML = `
         <div class="reflection-question-header">
-            <div class="reflection-question-title"><span class="math-inline">\{questionToDisplay\.title\}</div\>
-<div class\="reflection\-question\-number"\></span>{pageNumber}/2</div>
+            <div class="reflection-question-title">${questionToDisplay.title}</div>
+            <div class="reflection-question-number">${pageNumber}/2</div>
         </div>
+        
         <div class="attraction-guide">
             <div class="attraction-guide-icon">✨</div>
             <div class="attraction-guide-text">
@@ -2861,20 +2437,28 @@ function renderReflectionQuestion(questionId, containerId, pageNumber) {
                 답변 작성 시 매력 키워드를 선택하면 더 풍부한 표현을 할 수 있습니다.
             </div>
         </div>
+        
         <div class="reflection-sub-questions">
             ${questionToDisplay.questions.map((subQuestionText, index) => `
                 <div class="reflection-sub-question">
                     <div class="reflection-sub-question-title">
                         ${pageNumber}-${index + 1}. ${typeof subQuestionText === 'string' ? subQuestionText.replace(/^\d+-\d+\.\s*/, '') : subQuestionText}
                     </div>
+                    
                     <div class="helper-buttons">
-                        <button class="helper-btn skip" onclick="skipQuestion(${questionToDisplay.id}, ${index})">⏭️ 패스하기</button>
-                        <button class="helper-btn" onclick="showExample(${questionToDisplay.id}, ${index})">💡 예시 보기</button>
-                        <button class="helper-btn" onclick="showTemplate(${questionToDisplay.id}, ${index})">📝 템플릿</button>
+                         <button class="helper-btn" onclick="toggleExamples(this, ${questionToDisplay.id}, ${index})">💡 예시 보기</button>
+                        <button class="helper-btn" onclick="toggleGuideQuestions(this, ${questionToDisplay.id}, ${index})">📝 길잡이 질문</button>
                         <button class="helper-btn attraction-keyword-btn" onclick="showAttractionKeywords(${questionToDisplay.id}, ${index})">
                             ✨ <strong>매력 키워드 선택</strong> ✨
                         </button>
                     </div>
+
+                    <div id="guideQuestionsContainer_${questionToDisplay.id}_${index}" class="guide-questions-container">
+                        {/* 이 공간은 JS를 통해 내용이 채워집니다. */}
+                    </div>
+                    <div id="exampleContainer_${questionToDisplay.id}_${index}" class="example-container">
+    </div>
+                    
                     <div class="textarea-container">
                         <div class="selected-keywords" id="selectedKeywords_${questionToDisplay.id}_${index}">
                             <div class="keywords-label">선택한 매력 키워드:</div>
@@ -2882,18 +2466,22 @@ function renderReflectionQuestion(questionId, containerId, pageNumber) {
                                 <div class="no-keywords">아직 선택된 키워드가 없습니다</div>
                             </div>
                         </div>
-                        <textarea
-                            class="reflection-textarea"
+                        
+                        <div
+                            contenteditable="true"
+                            class="reflection-answer-box" 
                             placeholder="자유롭게 생각을 적어주세요..."
                             id="reflection_${questionToDisplay.id}_${index}"
-                            onfocus="window.currentTextarea = this; window.currentQuestionId = ${questionToDisplay.id}; window.currentSubIndex = ${index};"
-                            oninput="saveReflectionAnswer(${questionToDisplay.id}, ${index}, this.value)"
-                        ></textarea>
+                            onfocus="window.currentQuestionId = ${questionToDisplay.id}; window.currentSubIndex = ${index};"
+                            oninput="saveReflectionAnswer(${questionToDisplay.id}, ${index}, this.innerHTML)"
+                        ></div>
                     </div>
                 </div>
             `).join('')}
         </div>
     `;
+    // ▲▲▲ 여기까지가 교체될 HTML 내용입니다. ▲▲▲
+
     container.appendChild(questionCard);
 
     restoreReflectionAnswers(questionToDisplay.id); // 이전 답변 복원
@@ -2916,9 +2504,10 @@ function saveReflectionAnswer(questionId, subIndex, value) {
 function restoreReflectionAnswers(questionId) {
     if (testSystem.stage3_responses && testSystem.stage3_responses[questionId]) {
         Object.keys(testSystem.stage3_responses[questionId]).forEach(subIndex => {
-            const textarea = document.getElementById(`reflection_${questionId}_${subIndex}`);
-            if (textarea) {
-                textarea.value = testSystem.stage3_responses[questionId][subIndex];
+            const answerBox = document.getElementById(`reflection_${questionId}_${subIndex}`);
+            if (answerBox) {
+                // 'value'를 'innerHTML'로 변경
+                answerBox.innerHTML = testSystem.stage3_responses[questionId][subIndex];
             }
         });
     }
@@ -3045,7 +2634,7 @@ function showFinalComplete() {
             </div>
             
             <div style="margin-top: 30px;">
-                <button class="btn" onclick="location.reload()">새로운 테스트 시작하기</button>
+                <button class="btn" onclick="resetToBeginning()">처음으로 돌아가기</button>
             </div>
             
             <div style="margin-top: 20px; font-size: 12px; color: #a0aec0;">
@@ -3937,138 +3526,46 @@ function selectExperienceQuestion() {
 // ==================== 성찰 질문 렌더링 ====================
 // testlogic.js 파일 내 renderStage3Page 함수를 아래와 같이 수정합니다.
 
-function renderStage3Page(pageNumber) { // pageNumber는 1 또는 2입니다.
-    // 🌟 전역 변수인 completeStage3Questions와 stage3SelectedQuestionIds를 사용합니다.
-    // 이 변수들이 proceedToStage3Page1 함수에서 잘 준비되었는지 먼저 확인합니다.
+// ✅ 이 '완결판' 코드로 기존의 모든 renderStage3Page 함수를 대체해주세요.
+
+function renderStage3Page(pageNumber) {
     if (!completeStage3Questions || !stage3SelectedQuestionIds) {
-        console.error("⚠️ [renderStage3Page] 3단계 질문 데이터 또는 선택된 질문 ID가 준비되지 않아 페이지를 렌더링할 수 없습니다. 에러가 지속되면 첫 화면으로 돌아가거나 새로고침 해보세요.");
-        const containerIdOnError = pageNumber === 1 ? 'reflectionContainer1' : 'reflectionContainer2';
-        const containerOnError = document.getElementById(containerIdOnError);
-        if (containerOnError) containerOnError.innerHTML = "<p>질문을 불러오는 데 심각한 문제가 발생했습니다. 이전 단계로 돌아가거나 새로고침 해주세요.</p>";
+        console.error("⚠️ [renderStage3Page] 3단계 질문 데이터 또는 ID가 준비되지 않았습니다.");
         return;
     }
 
     let questionIdToRender;
-    // 질문이 표시될 HTML div의 ID를 결정합니다. (이 부분은 사용자님 코드에 이미 있는 방식입니다)
-    const containerId = pageNumber === 1 ? 'reflectionContainer1' : 'reflectionContainer2';
+    const containerId = `reflectionContainer${pageNumber}`; // 컨테이너 ID를 동적으로 생성합니다.
 
     if (pageNumber === 1) {
-        // 1페이지일 경우, 미리 골라둔 첫 번째 질문 ID를 사용합니다.
         questionIdToRender = stage3SelectedQuestionIds.firstQuestionId;
     } else if (pageNumber === 2) {
-        // 2페이지일 경우, 미리 골라둔 두 번째 질문 ID를 사용합니다.
         questionIdToRender = stage3SelectedQuestionIds.secondQuestionId;
+    } else if (pageNumber === 3) {
+        // 3번째 페이지를 위한 로직
+        questionIdToRender = stage3SelectedQuestionIds.thirdQuestionId;
     } else {
         console.error("[renderStage3Page] 잘못된 페이지 번호입니다:", pageNumber);
-        const containerOnError = document.getElementById(containerId); // containerId가 정의되었는지 확인
-        if (containerOnError) containerOnError.innerHTML = `<p>잘못된 페이지 요청입니다.</p>`;
         return;
     }
 
-    // 선택된 질문 ID가 유효한지 다시 한번 확인합니다.
+    // 질문 ID가 없는 경우(undefined)에 대한 방어 코드
     if (!questionIdToRender) {
-        console.error(`⚠️ [renderStage3Page] ${pageNumber}페이지에 해당하는 질문 ID를 가져오지 못했습니다. (선택된 ID: ${questionIdToRender}). stage3SelectedQuestionIds:`, stage3SelectedQuestionIds);
-        const containerOnError = document.getElementById(containerId);
-        if (containerOnError) containerOnError.innerHTML = `<p>${pageNumber}페이지 질문을 불러오는 데 실패했습니다. 선택된 질문 ID가 올바르지 않거나, 기본값 설정에 문제가 있을 수 있습니다.</p>`;
+        console.error(`⚠️ ${pageNumber}페이지에 해당하는 질문 ID를 찾을 수 없습니다. (ID가 undefined) startStage3 함수를 확인해주세요.`);
+        const container = document.getElementById(containerId);
+        if (container) {
+            container.innerHTML = `<p>질문을 불러오는 데 실패했습니다. ID 선택 로직에 문제가 있습니다.</p>`;
+        }
         return;
     }
-
-    // 이제 실제 질문 렌더링은 renderReflectionQuestion 함수에 위임합니다.
-    // 선택된 질문 ID (questionIdToRender), 질문을 표시할 HTML 컨테이너 ID (containerId), 
-    // 그리고 현재 페이지 번호 (pageNumber)를 전달합니다.
+    
+    // 실제 질문을 화면에 그리는 함수 호출
     renderReflectionQuestion(questionIdToRender, containerId, pageNumber);
 }
 
 // testlogic.js 파일 내 renderReflectionQuestion 함수를 아래 내용으로 전체 교체합니다.
 
-function renderReflectionQuestion(questionId, containerId, pageNumber) {
-    const container = document.getElementById(containerId);
-    if (!container) {
-        console.error(`[renderReflectionQuestion] HTML에서 ID가 '${containerId}'인 컨테이너를 찾을 수 없습니다.`);
-        return;
-    }
-    container.innerHTML = ''; // 이전 내용이 있다면 깨끗하게 비웁니다.
 
-    // 🌟 핵심 변경: testSystem.getReflectionQuestions() 대신 전역 변수 'completeStage3Questions'를 사용합니다.
-    if (!completeStage3Questions) {
-        console.error('❌ [renderReflectionQuestion] completeStage3Questions 데이터가 준비되지 않았습니다. 프로그램 흐름을 확인해주세요.');
-        container.innerHTML = "<p>질문 데이터를 불러오는 중 심각한 오류가 발생했습니다. 새로고침하거나 첫 단계로 돌아가세요.</p>";
-        return;
-    }
-
-    // 'completeStage3Questions' 배열에서 전달받은 questionId와 일치하는 질문 객체를 찾습니다.
-    const questionToDisplay = completeStage3Questions.find(q => q.id === questionId);
-
-    if (!questionToDisplay) {
-        console.error(`❌ [renderReflectionQuestion] ID가 ${questionId}인 질문을 completeStage3Questions 배열에서 찾을 수 없습니다.`);
-        container.innerHTML = `<p>ID ${questionId}에 해당하는 질문을 표시하는 데 문제가 발생했습니다. 관리자에게 문의하거나 이전 단계로 돌아가세요.</p>`;
-        return;
-    }
-
-    // 이제 questionToDisplay 객체에는 title, questions(하위 질문 배열), examples,
-    // 그리고 새로 추가된 reflectionCategory, attractionCategories 정보가 모두 들어있습니다.
-    console.log(`📝 ${pageNumber}페이지 질문 렌더링 시작 (ID: ${questionId}, 제목: ${questionToDisplay.title})`);
-
-    const questionCard = document.createElement('div');
-    questionCard.className = 'reflection-question-card';
-
-    // questionToDisplay 객체의 정보를 사용하여 HTML 내용을 구성합니다.
-    // (이 HTML 구조는 사용자님의 기존 코드의 상세한 구조를 최대한 반영했습니다.)
-    questionCard.innerHTML = `
-        <div class="reflection-question-header">
-            <div class="reflection-question-title">${questionToDisplay.title}</div>
-            <div class="reflection-question-number">${pageNumber}/2</div>
-        </div>
-        
-        <div class="attraction-guide">
-            <div class="attraction-guide-icon">✨</div>
-            <div class="attraction-guide-text">
-                <strong>매력 키워드를 활용하세요!</strong><br>
-                답변 작성 시 매력 키워드를 선택하면 더 풍부한 표현을 할 수 있습니다.
-            </div>
-        </div>
-        
-        <div class="reflection-sub-questions">
-            ${questionToDisplay.questions.map((subQuestionText, index) => `
-                <div class="reflection-sub-question">
-                    <div class="reflection-sub-question-title">
-                        ${pageNumber}-${index + 1}. ${typeof subQuestionText === 'string' ? subQuestionText.replace(/^\d+-\d+\.\s*/, '') : subQuestionText}
-                    </div>
-                    
-                    <div class="helper-buttons">
-                        <button class="helper-btn skip" onclick="skipQuestion(${questionToDisplay.id}, ${index})">⏭️ 패스하기</button>
-                        <button class="helper-btn" onclick="showExample(${questionToDisplay.id}, ${index})">💡 예시 보기</button>
-                        <button class="helper-btn" onclick="showTemplate(${questionToDisplay.id}, ${index})">📝 템플릿</button>
-                        <button class="helper-btn attraction-keyword-btn" onclick="showAttractionKeywords(${questionToDisplay.id}, ${index})">
-                            ✨ <strong>매력 키워드 선택</strong> ✨
-                        </button>
-                    </div>
-                    
-                    <div class="textarea-container">
-                        <div class="selected-keywords" id="selectedKeywords_${questionToDisplay.id}_${index}">
-                            <div class="keywords-label">선택한 매력 키워드:</div>
-                            <div class="keywords-tags">
-                                <div class="no-keywords">아직 선택된 키워드가 없습니다</div>
-                            </div>
-                        </div>
-                        
-                        <textarea 
-                            class="reflection-textarea" 
-                            placeholder="자유롭게 생각을 적어주세요..."
-                            id="reflection_${questionToDisplay.id}_${index}"
-                            onfocus="window.currentTextarea = this; window.currentQuestionId = ${questionToDisplay.id}; window.currentSubIndex = ${index};"
-                            oninput="saveReflectionAnswer(${questionToDisplay.id}, ${index}, this.value)"
-                        ></textarea>
-                    </div>
-                </div>
-            `).join('')}
-        </div>
-    `;
-    container.appendChild(questionCard);
-
-    // 저장된 답변이 있다면 복원합니다.
-    restoreReflectionAnswers(questionToDisplay.id);
-}
 
 // ==================== 답변 저장 및 복원 ====================
 function saveReflectionAnswer(questionId, subIndex, value) {
@@ -4096,17 +3593,6 @@ function restoreReflectionAnswers(questionId) {
 }
 
 // ==================== 도우미 기능들 ====================
-function skipQuestion(questionId, subIndex) {
-    const textarea = document.getElementById(`reflection_${questionId}_${subIndex}`);
-    if (textarea) {
-        textarea.value = "[패스함]";
-        textarea.style.background = "#f7fafc";
-        saveReflectionAnswer(questionId, subIndex, "[패스함]");
-    }
-}
-
-
-
 
 
 // ==================== 키워드 태그 관리 ====================
@@ -4184,6 +3670,7 @@ function checkSurveyCompletion() {
 }
 
 // ==================== 설문조사 제출 및 완료 ====================
+// ==================== 설문조사 제출 및 완료 ====================
 function submitSurvey() {
     console.log('📊 설문조사 제출 시작');
     
@@ -4191,12 +3678,14 @@ function submitSurvey() {
     const satisfaction = document.querySelector('input[name="overall_satisfaction"]:checked');
     const recommendation = document.querySelector('input[name="recommendation"]:checked');
     
-    if (!satisfaction || !recommendation) {
-        alert('필수 항목을 모두 선택해주세요.');
+    // 설문 필수 항목이 더 많으므로, setupSurveyValidation의 로직을 활용하여 버튼 활성화 여부로 체크
+    const submitBtn = document.getElementById('surveySubmitBtn');
+    if (submitBtn && submitBtn.disabled) {
+        alert('모든 필수 항목에 답변해주세요.');
         return;
     }
     
-    // 🔥 설문 데이터 수집
+    // 설문 데이터 수집
     const surveyData = {
         overall_satisfaction: document.querySelector('input[name="overall_satisfaction"]:checked')?.value || '',
         discovery_help: document.querySelector('input[name="discovery_help"]:checked')?.value || '',
@@ -4215,12 +3704,11 @@ function submitSurvey() {
         positive_experience: document.querySelector('textarea[name="positive_experience"]')?.value || '',
         understanding_reason: document.querySelector('textarea[name="understanding_reason"]')?.value || '',
         development_suggestion: document.querySelector('textarea[name="development_suggestion"]')?.value || '',
-        needs_improvement: document.querySelector('textarea[name="needs_improvement"]')?.value || '',
+        needs_improvement: document.querySelector('select[name="needs_improvement"]')?.value || '',
         improvement_reason: document.querySelector('textarea[name="improvement_reason"]')?.value || '',
         submitted_at: new Date().toISOString()
     };
     
-    // 🔥 여기에 추가하세요!
     completeTestData.survey_responses = surveyData;
     
     // 전체 테스트 데이터 구성
@@ -4238,64 +3726,27 @@ function submitSurvey() {
         stage3_duration: window.completeTestData?.stage3_duration
     };
     
-    console.log('📋 완전한 테스트 데이터:', finalTestData);  // 🔥 변수명도 수정
+    console.log('📋 완전한 테스트 데이터:', finalTestData);
     
     // Firebase에 저장
     if (window.firebaseDB) {
         window.firebaseAddDoc(window.firebaseCollection(window.firebaseDB, 'complete_responses'), finalTestData)
             .then(() => {
                 console.log('🔥 Firebase 저장 완료!');
-                showFinalComplete();
+                resetToBeginning(); // ⬅️ 수정: 완료 페이지 대신 초기화 함수 호출
             })
             .catch((error) => {
                 console.error('❌ Firebase 저장 실패:', error);
-                localStorage.setItem('completeTestData', JSON.stringify(finalTestData));  // 🔥 변수명도 수정
-                showFinalComplete();
+                localStorage.setItem('completeTestData', JSON.stringify(finalTestData));
+                resetToBeginning(); // ⬅️ 수정: 여기도 초기화 함수 호출
             });
     } else {
         console.log('💾 로컬 저장으로 진행');
-        localStorage.setItem('completeTestData', JSON.stringify(finalTestData));  // 🔥 변수명도 수정
-        showFinalComplete();
+        localStorage.setItem('completeTestData', JSON.stringify(finalTestData));
+        resetToBeginning(); // ⬅️ 수정: 여기도 초기화 함수 호출
     }
 }
-function showFinalComplete() {
-    document.getElementById('surveyStage').style.display = 'none';
-    document.getElementById('finalComplete').style.display = 'block';
-    
-    document.getElementById('completeContent').innerHTML = `
-        <div style="text-align: center; padding: 40px;">
-            <div style="font-size: 48px; margin-bottom: 20px;">🎊</div>
-            <h3 style="color: #5a67d8; margin-bottom: 20px;">소중한 참여 감사합니다!</h3>
-            <p style="color: #718096; line-height: 1.6;">
-                ASTER 프로그램을 통해 자신의 매력을 탐색하는 시간이 되셨기를 바랍니다.<br>
-                여러분의 피드백은 프로그램 개선에 큰 도움이 됩니다.
-            </p>
-            
-            <div style="margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 10px;">
-                <h4 style="color: #4a5568; margin-bottom: 15px;">🎯 당신이 선택한 매력 카테고리</h4>
-                <p style="font-size: 16px; font-weight: bold; color: #5a67d8;">
-                    ${testSystem.stage1_selections.join(' • ')}
-                </p>
-            </div>
-            
-            <div style="margin-top: 30px; padding: 20px; background: #f0f4ff; border-radius: 10px;">
-                <p style="font-size: 14px; color: #4c51bf;">
-                    💡 <strong>다음 단계 제안:</strong><br>
-                    오늘 작성한 성찰 내용을 바탕으로 지속적인 자기계발에 도전해보세요!<br>
-                    자신만의 매력을 더욱 발전시켜 나가시길 응원합니다.
-                </p>
-            </div>
-            
-            <div style="margin-top: 30px;">
-                <button class="btn" onclick="location.reload()">새로운 테스트 시작하기</button>
-            </div>
-            
-                        <div style="margin-top: 20px; font-size: 12px; color: #a0aec0;">
-                완료 시간: ${new Date().toLocaleString('ko-KR')}
-            </div>
-        </div>
-    `;
-}
+
 
 // ==================== 유틸리티 함수들 ====================
 
@@ -4327,6 +3778,13 @@ function downloadResults() {
     link.click();
 }
 
+// '응답 요약'에서 '온보딩 페이지'로 이동시키는 함수
+function showStage3Onboarding() {
+    document.getElementById('responseSummary').style.display = 'none';
+    document.getElementById('stage3_onboarding').style.display = 'block';
+    console.log('✅ 3단계 온보딩 화면으로 이동합니다.');
+}
+
 // ===== 뒤로가기 함수들 =====
 function backToStage3Page4() {
     console.log('3단계로 돌아가기');
@@ -4336,57 +3794,47 @@ function backToStage3Page4() {
 
 // 기존 코드 마지막 부분에 이 함수를 추가하세요:
 
-function showExample(questionId, subIndex) {
-    // 현재 질문 정보 저장
-    window.currentQuestionId = questionId;
-    window.currentSubIndex = subIndex;
+/**
+ * '예시 보기' 버튼을 눌렀을 때, 답변 예시 목록을 보여주거나 숨기는 함수
+ * @param {HTMLElement} button - 클릭된 버튼 요소
+ * @param {number} questionId - 현재 질문 그룹의 ID
+ * @param {number} subIndex - 현재 하위 질문의 인덱스
+ */
+function toggleExamples(button, questionId, subIndex) {
+    const container = document.getElementById(`exampleContainer_${questionId}_${subIndex}`);
+    if (!container) return;
+
+    const isVisible = container.classList.contains('visible');
+
+    if (isVisible) {
+        // 이미 보일 때 -> 숨기기
+        container.classList.remove('visible');
+        button.innerHTML = '💡 예시 보기';
+    } else {
+        // 숨겨져 있을 때 -> 보이기
+        const allQuestions = testSystem.getReflectionQuestions();
+        const question = allQuestions.find(q => q.id === questionId);
     
-    console.log('예시 모달 열기:', questionId, subIndex);
-    
-    // 해당 질문의 예시 데이터 찾기
-    const allQuestions = testSystem.getReflectionQuestions();
-    const question = allQuestions.find(q => q.id === questionId);
-    
-    if (!question || !question.examples || !question.examples[subIndex]) {
-        console.error('예시 데이터를 찾을 수 없습니다:', questionId, subIndex);
-        alert('예시 데이터를 불러올 수 없습니다.');
-        return;
+        if (!question || !question.examples || !question.examples[subIndex]) {
+            alert('이 질문에 대한 예시가 없습니다.');
+            return;
+        }
+
+        const examples = question.examples[subIndex];
+
+        // 컨테이너 내용 채우기
+        let contentHTML = '<div class="example-title">💬 이런 식으로 답변해볼 수 있어요!</div>';
+        examples.forEach(example => {
+            // "예시 1: " 같은 부분을 제거하고 내용만 추출
+            const cleanExample = example.replace(/^예시 \d+: "/, '').replace(/"$/, '');
+            contentHTML += `<div class="example-item">${cleanExample}</div>`;
+        });
+        container.innerHTML = contentHTML;
+
+        // .visible 클래스를 추가하여 CSS 애니메이션 실행
+        container.classList.add('visible');
+        button.innerHTML = '💡 예시 닫기';
     }
-    
-    const examples = question.examples[subIndex];
-    const content = document.getElementById('exampleContent');
-    
-    // 예시 내용 생성
-    let html = `
-        <div class="example-header">
-            <h4 style="color: #5a67d8; margin-bottom: 15px;">💡 답변 예시</h4>
-            <p style="font-size: 14px; color: #718096; margin-bottom: 20px;">
-                다음 예시들을 참고해서 자신만의 답변을 작성해보세요.
-            </p>
-        </div>
-        
-        <div class="examples-list">
-    `;
-    
-    examples.forEach((example, index) => {
-        html += `
-            <div class="example-item">
-                <div class="example-number">예시 ${index + 1}</div>
-                <div class="example-text">${example}</div>
-            </div>
-        `;
-    });
-    
-    html += `
-        </div>
-        
-        <div style="margin-top: 20px; padding: 15px; background: #f0f4ff; border-radius: 8px; font-size: 13px; color: #4c51bf;">
-            💡 <strong>팁:</strong> 예시를 그대로 복사하지 마시고, 자신만의 경험과 이야기로 답변해보세요!
-        </div>
-    `;
-    
-    content.innerHTML = html;
-    document.getElementById('exampleModal').style.display = 'block';
 }
 
 // 모달 닫기 함수 (혹시 없다면 추가)
@@ -4916,134 +4364,48 @@ const TEMPLATE_DATA = {
     ]
 };
 
-// ==================== 템플릿 모달 함수 ====================
-// 기존 showTemplate 함수를 완전히 교체
-function showTemplate(questionId, subIndex) {
-    // 현재 질문 정보 저장
-    window.currentQuestionId = questionId;
-    window.currentSubIndex = subIndex;
-    
-    console.log('템플릿 모달 열기:', questionId, subIndex);
-    
-    // 해당 질문의 템플릿 데이터 찾기
-    const templates = TEMPLATE_DATA[questionId];
-    
-    if (!templates || !templates[subIndex]) {
-        console.error('템플릿 데이터를 찾을 수 없습니다:', questionId, subIndex);
-        alert('템플릿 데이터를 불러올 수 없습니다.');
-        return;
-    }
-    
-    const currentTemplates = templates[subIndex];
-    const content = document.getElementById('templateContent');
-    
-    // 개선된 템플릿 내용 생성
-    let html = `
-        <div class="template-header">
-            <h4 style="color: #5a67d8; margin-bottom: 15px;">📝 글쓰기 템플릿</h4>
-            <p style="font-size: 14px; color: #718096; margin-bottom: 20px;">
-                아래 가이드 질문들에 답변을 작성한 후, "템플릿 사용하기" 버튼을 누르면 답변이 자동으로 조합되어 메인 답변창에 입력됩니다.
-            </p>
-        </div>
-        
-        <div class="template-questions">
-    `;
-    
-    currentTemplates.forEach((template, index) => {
-        html += `
-            <div class="template-question-item">
-                <div class="template-question-header">
-                    <span class="template-letter">${String.fromCharCode(97 + index)}</span>
-                    <span class="template-question-text">${template}</span>
-                </div>
-                <textarea 
-                    class="template-answer-input" 
-                    placeholder="이 질문에 대한 답변을 작성해주세요..."
-                    id="templateAnswer_${index}"
-                    rows="3"
-                ></textarea>
-            </div>
-        `;
-    });
-    
-    html += `
-        </div>
-        
-        <div class="template-footer">
-            <div style="padding: 15px; background: #f0f4ff; border-radius: 8px; font-size: 13px; color: #4c51bf; margin: 20px 0;">
-                💡 <strong>사용법:</strong> 각 질문에 간단히 답변을 작성한 후, "템플릿 사용하기" 버튼을 누르면 답변들이 자연스럽게 조합되어 메인 답변창에 자동 입력됩니다.
-            </div>
-            <div style="text-align: center;">
-                <button class="template-use-btn" onclick="useTemplate()">
-                    ✨ 템플릿 사용하기
-                </button>
-            </div>
-        </div>
-    `;
-    
-    content.innerHTML = html;
-    document.getElementById('templateModal').style.display = 'block';
-}
+// 기존 toggleTemplate 함수를 삭제하고 아래 코드로 교체해주세요.
 
-// 템플릿 사용하기 함수
-function useTemplate() {
-    const questionId = window.currentQuestionId;
-    const subIndex = window.currentSubIndex;
-    
-    if (!questionId || subIndex === undefined) {
-        alert('오류가 발생했습니다. 다시 시도해주세요.');
-        return;
-    }
-    
-    // 각 템플릿 답변 수집
-    const answers = [];
-    const templateInputs = document.querySelectorAll('.template-answer-input');
-    
-    templateInputs.forEach((input, index) => {
-        const answer = input.value.trim();
-        if (answer) {
-            const letter = String.fromCharCode(97 + index); // a, b, c
-            answers.push(`${letter}. ${answer}`);
-        }
-    });
-    
-    if (answers.length === 0) {
-        alert('최소 하나의 질문에는 답변을 작성해주세요.');
-        return;
-    }
-    
-    // 답변들을 자연스럽게 조합
-    const combinedAnswer = answers.join('\n\n');
-    
-    // 메인 답변창에 입력
-    const mainTextarea = document.getElementById(`reflection_${questionId}_${subIndex}`);
-    if (mainTextarea) {
-        // 기존 내용이 있으면 추가, 없으면 새로 입력
-        const existingContent = mainTextarea.value.trim();
-        if (existingContent) {
-            mainTextarea.value = existingContent + '\n\n' + combinedAnswer;
-        } else {
-            mainTextarea.value = combinedAnswer;
-        }
-        
-   
-        
-        // 모달 닫기 - 여러 방법으로 시도
-const templateModal = document.getElementById('templateModal');
-if (templateModal) {
-    templateModal.style.display = 'none';
-}
+/**
+ * '길잡이 질문' 버튼을 눌렀을 때, 질문 목록을 보여주거나 숨기는 함수
+ * @param {HTMLElement} button - 클릭된 버튼 요소
+ * @param {number} questionId - 현재 질문 그룹의 ID
+ * @param {number} subIndex - 현재 하위 질문의 인덱스
+ */
+function toggleGuideQuestions(button, questionId, subIndex) {
+    // 1. 길잡이 질문이 들어갈 컨테이너 요소를 찾습니다.
+    const container = document.getElementById(`guideQuestionsContainer_${questionId}_${subIndex}`);
+    if (!container) return; // 컨테이너가 없으면 함수 종료
 
-// closeModal 함수가 있다면 사용
-if (typeof closeModal === 'function') {
-    closeModal('templateModal');
-}
-        
-        // 메인 답변창에 포커스
-        mainTextarea.focus();
-        
+    // 2. 컨테이너가 현재 화면에 보이는 상태인지 확인합니다.
+    const isVisible = container.classList.contains('visible');
+
+    if (isVisible) {
+        // 3-1. 만약 보이고 있다면, 'visible' 클래스를 제거하여 CSS 애니메이션으로 숨깁니다.
+        container.classList.remove('visible');
+        button.innerHTML = '📝 길잡이 질문'; // 버튼 텍스트를 원래대로 되돌립니다.
     } else {
-        alert('답변창을 찾을 수 없습니다. 페이지를 새로고침해주세요.');
+        // 3-2. 만약 숨겨져 있다면,
+        // TEMPLATE_DATA에서 현재 질문에 맞는 길잡이 질문 목록을 가져옵니다.
+        const templates = TEMPLATE_DATA[questionId]?.[subIndex];
+        if (!templates) {
+            alert('이 질문에 대한 길잡이가 없습니다.');
+            return;
+        }
+
+        // 길잡이 질문 목록을 HTML로 만듭니다.
+        let contentHTML = '<div class="guide-title">💡 아래 질문들을 길잡이 삼아 답변을 자유롭게 작성해보세요!</div><ul>';
+        templates.forEach(q => {
+            contentHTML += `<li>${q}</li>`;
+        });
+        contentHTML += '</ul>';
+        
+        // 컨테이너 안에 만들어진 HTML을 채워넣습니다.
+        container.innerHTML = contentHTML;
+
+        // 'visible' 클래스를 추가하여 CSS 애니메이션으로 부드럽게 펼칩니다.
+        container.classList.add('visible');
+        button.innerHTML = '📝 길잡이 질문 닫기'; // 버튼 텍스트를 '닫기'로 바꿉니다.
     }
 }
 
@@ -5587,6 +4949,71 @@ function setupSurveyValidation() {
         // 초기 상태 체크
         setTimeout(checkFormCompletion, 100); // 약간의 지연 후 체크
     }
+}
+
+// testlogic.js 파일 맨 아래에 추가하세요.
+
+/**
+ * 모든 테스트 상태를 초기화하고 첫 화면(introStage)으로 돌아가는 함수
+ */
+function resetToBeginning() {
+    console.log('🔄 테스트 초기화 및 첫 화면으로 복귀 시작...');
+
+    // 1. 모든 stage와 모달을 숨깁니다.
+    const allStageIds = [
+        'introStage', 'stage1', 'stage2Situation', 'stage2Personality', 
+        'responseSummary', 'stage3_onboarding', 'stage3_page1', 'stage3_page2', 
+        'stage3_page3', 'surveyStage', 'finalComplete',
+        'exampleModal', 'attractionModal', 'templateModal'
+    ];
+    allStageIds.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.style.display = 'none';
+        }
+    });
+
+    // 2. introStage만 다시 보여줍니다.
+    document.getElementById('introStage').style.display = 'block';
+
+    // 3. 테스트 데이터와 상태를 초기화합니다.
+    // AttractionTestSystem 인스턴스의 데이터 초기화
+    testSystem.stage1_selections = [];
+    testSystem.stage2_situation_responses = [];
+    testSystem.stage2_personality_responses = [];
+    testSystem.stage3_responses = {};
+    
+    // 전역으로 관리되던 3단계 질문 ID 초기화
+    stage3SelectedQuestionIds = null;
+
+    // 전체 테스트 결과 객체 초기화
+    completeTestData = {
+        userId: null,
+        timestamp: null,
+        stage1_selections: [],
+        stage2_situation_responses: [],
+        stage2_personality_responses: [],
+        stage3_responses: {},
+        survey_responses: {},
+        completed: false,
+        stage1_duration: null,
+        stage2_duration: null,
+        stage3_duration: null
+    };
+
+    // 타이머 기록 초기화
+    stageTimers = {
+        stage1Start: null,
+        stage2Start: null, 
+        stage3Start: null,
+        currentPageStart: null
+    };
+
+    // 로컬 스토리지의 사용자 ID도 새로 생성하도록 삭제
+    localStorage.removeItem('userId');
+    localStorage.removeItem('asterProgressData');
+
+    console.log('✅ 테스트가 성공적으로 초기화되었습니다.');
 }
 
 console.log('✅ 템플릿 시스템 초기화 완료 - 29개 질문 템플릿 데이터 로드됨');

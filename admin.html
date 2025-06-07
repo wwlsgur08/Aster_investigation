@@ -231,6 +231,21 @@
             margin: 20px 0;
             text-align: center;
         }
+
+        /* ▼▼▼ 이 코드를 붙여넣으세요 ▼▼▼ */
+        .data-table tbody tr {
+            cursor: pointer; /* 마우스를 올리면 손가락 모양으로 변경 */
+        }
+        .data-table tbody tr.selected {
+            background-color: #dbeafe !important; /* 선택된 행의 배경색 */
+            font-weight: bold;
+        }
+        .btn:disabled {
+            background: #cbd5e1; /* 비활성화된 버튼의 배경색 */
+            cursor: not-allowed;
+        }
+        /* ▲▲▲ 여기까지 붙여넣으세요 ▲▲▲ */
+</style>
     </style>
 </head>
 <body>
@@ -265,7 +280,7 @@
             <!-- 최근 사용자 데이터 -->
             <div class="panel">
                 <div class="panel-header">
-                    <div class="panel-title">📊 최근 사용자 데이터</div>
+                    <div class="panel-title">📊 최근 사용자 데이터 (삭제할 항목 클릭)</div>
                 </div>
                 <div class="panel-content" id="recentUsers">
                     <div class="loading">데이터 로딩 중...</div>
@@ -297,7 +312,7 @@
         <div style="text-align: center; margin-top: 30px;">
             <button class="btn" onclick="refreshData()">🔄 데이터 새로고침</button>
             <button class="btn" onclick="exportData()">📥 데이터 내보내기</button>
-            <button class="btn" onclick="clearAllData()" style="background: #e53e3e;">🗑️ 모든 데이터 삭제</button>
+            <button class="btn" id="deleteButton" onclick="deleteSelectedData()" style="background: #e53e3e;" disabled>🗑️ 데이터 삭제</button>
         </div>
     </div>
 
@@ -346,8 +361,11 @@
 
 <script>
 // 임시로 필요한 함수들을 직접 추가
+// 전역 데이터 배열
 let userData = [];
 let surveyData = [];
+// 선택된 사용자 ID를 저장합니다. (기존 변수 활용, 단일 선택으로 로직 변경)
+let selectedUserIds = new Set();
 
 async function loadDashboardData() {
     console.log('📊 대시보드 데이터 로딩 시작...');
@@ -360,37 +378,11 @@ async function loadDashboardData() {
         surveyData = [];
         
         if (!snapshot.empty) {
-            console.log(`✅ 발견! 컬렉션 "complete_responses": ${snapshot.size}개 문서`);
-            
             snapshot.forEach((doc) => {
                 const data = doc.data();
-                console.log('📄 실제 문서 구조:', data);
-                
-                                // 사용자 데이터 추가
-                userData.push({
-                    id: doc.id,
-                    userId: data.userId,
-                    timestamp: data.timestamp,
-                    completed: data.completed,
-                    stage1_selections: data.stage1_selections || [],
-                    stage2_situation_responses: data.stage2_situation_responses || [],
-                    stage2_personality_responses: data.stage2_personality_responses || [],
-                    stage3_responses: data.stage3_responses || {},
-                    survey_responses: data.survey_responses || {},
-                    // 🔥 시간 데이터 필드 추가
-                    stage1_duration: data.stage1_duration,
-                    stage2_duration: data.stage2_duration,
-                    stage3_duration: data.stage3_duration
-                });
-                
-                // 설문 응답이 있으면 surveyData에도 추가
+                userData.push({ id: doc.id, ...data });
                 if (data.survey_responses && Object.keys(data.survey_responses).length > 0) {
-                    surveyData.push({
-                        id: doc.id,
-                        userId: data.userId,
-                        timestamp: data.timestamp,
-                        ...data.survey_responses
-                    });
+                    surveyData.push({ id: doc.id, ...data, ...data.survey_responses });
                 }
             });
         }
@@ -398,11 +390,8 @@ async function loadDashboardData() {
         console.log(`👥 사용자 데이터: ${userData.length}개`);
         console.log(`📝 설문 데이터: ${surveyData.length}개`);
         
-        // 통계 업데이트
-        updateStatistics();
-        renderRecentUsers();
-        renderCategoryStats();
-        renderSurveyAnalysis();
+        // [수정] 대시보드 전체를 다시 그리는 함수 호출
+        rerenderDashboard();
         
         console.log('✅ 대시보드 로딩 완료!');
         
@@ -412,16 +401,29 @@ async function loadDashboardData() {
     }
 }
 
-function updateStatistics() {
-    // 총 사용자 수
-    document.getElementById('totalUsers').textContent = userData.length;
+// [신규] 대시보드 전체를 다시 그리는 함수
+function rerenderDashboard() {
+    // 선택된 ID가 있으면 해당 ID를 가져오고, 없으면 null 입니다.
+    const filteredUserId = selectedUserIds.size > 0 ? selectedUserIds.values().next().value : null;
+
+    // 선택된 사용자에 따라 필터링된 데이터를 생성합니다.
+    const finalUserData = filteredUserId ? userData.filter(u => u.id === filteredUserId) : userData;
+    const finalSurveyData = filteredUserId ? surveyData.filter(s => s.id === filteredUserId) : surveyData;
+
+    updateStatistics(finalUserData, finalSurveyData);
+    renderRecentUsers(); // 사용자 목록은 항상 전체를 보여주되, 선택된 항목을 표시합니다.
+    renderCategoryStats(finalUserData);
+    renderSurveyAnalysis(finalSurveyData);
+    updateDeleteButtonState();
+}
+
+
+function updateStatistics(currentUsers, currentSurveys) {
+    document.getElementById('totalUsers').textContent = currentUsers.length;
+    document.getElementById('totalSurveys').textContent = currentSurveys.length;
     
-    // 총 설문 응답 수
-    document.getElementById('totalSurveys').textContent = surveyData.length;
-    
-    // 평균 만족도 계산
-    if (surveyData.length > 0) {
-        const satisfactionScores = surveyData
+    if (currentSurveys.length > 0) {
+        const satisfactionScores = currentSurveys
             .map(survey => parseInt(survey.overall_satisfaction || survey.satisfaction))
             .filter(score => !isNaN(score));
         
@@ -435,8 +437,7 @@ function updateStatistics() {
         document.getElementById('avgSatisfaction').textContent = '-';
     }
     
-    // 완료율 계산
-    if (userData.length > 0) {
+    if (userData.length > 0) { // 완료율은 전체 사용자 대비로 계산
         const completionRate = (surveyData.length / userData.length * 100);
         document.getElementById('completionRate').textContent = `${completionRate.toFixed(1)}%`;
     } else {
@@ -453,7 +454,6 @@ function renderRecentUsers() {
     }
     
     const recentUsers = userData.slice(0, 10);
-    
     let html = '<table class="data-table"><thead><tr><th>등록 시간</th><th>사용자 ID</th><th>상태</th></tr></thead><tbody>';
     
     recentUsers.forEach(user => {
@@ -462,64 +462,36 @@ function renderRecentUsers() {
         const hasSurvey = surveyData.some(s => s.userId === user.userId);
         const status = hasSurvey ? '✅ 완료' : (user.completed ? '⏳ 테스트 완료' : '🔄 진행중');
         
-        html += `<tr><td>${timestamp}</td><td style="font-family: monospace; font-size: 12px;">${userId}</td><td>${status}</td></tr>`;
+        // [수정] 선택 여부에 따라 'selected' 클래스를 추가합니다.
+        const isSelected = selectedUserIds.has(user.id) ? 'selected' : '';
+        html += `<tr class="${isSelected}" onclick="toggleUserSelection(this, '${user.id}')"><td>${timestamp}</td><td style="font-family: monospace; font-size: 12px;">${userId}</td><td>${status}</td></tr>`;
     });
     
     html += '</tbody></table>';
     container.innerHTML = html;
 }
 
-function renderCategoryStats() {
+function renderCategoryStats(currentUsers) {
     const container = document.getElementById('categoryStats');
     
-    if (userData.length === 0) {
+    if (currentUsers.length === 0) {
         container.innerHTML = '<div style="text-align: center; color: #718096; padding: 40px;">데이터가 없습니다.</div>';
         return;
     }
     
-    // 각 단계별 고민 시간 계산
-    let stage1Times = [];
-    let stage2Times = [];
-    let stage3Times = [];
+    let stage1Times = [], stage2Times = [], stage3Times = [];
     
-    userData.forEach(user => {
-        console.log('고민 시간 분석 중인 사용자:', user.userId);
-        console.log('사용자 데이터:', user);
-        
-        // 1단계 고민 시간 (수정된 필드명)
-        if (user.stage1_duration) {
-            const time = user.stage1_duration;
-            if (typeof time === 'number' && time > 0) {
-                stage1Times.push(time);
-            }
-        }
-        
-        // 2단계 고민 시간 (수정된 필드명)
-        if (user.stage2_duration) {
-            const time = user.stage2_duration;
-            if (typeof time === 'number' && time > 0) {
-                stage2Times.push(time);
-            }
-        }
-        
-        // 3단계 고민 시간 (수정된 필드명)
-        if (user.stage3_duration) {
-            const time = user.stage3_duration;
-            if (typeof time === 'number' && time > 0) {
-                stage3Times.push(time);
-            }
-        }
+    currentUsers.forEach(user => {
+        if (user.stage1_duration && typeof user.stage1_duration === 'number' && user.stage1_duration > 0) stage1Times.push(user.stage1_duration);
+        if (user.stage2_duration && typeof user.stage2_duration === 'number' && user.stage2_duration > 0) stage2Times.push(user.stage2_duration);
+        if (user.stage3_duration && typeof user.stage3_duration === 'number' && user.stage3_duration > 0) stage3Times.push(user.stage3_duration);
     });
     
-    console.log('단계별 고민 시간:', { stage1Times, stage2Times, stage3Times });
-    
-    // 평균 계산 함수
     function calculateAverage(times) {
         if (times.length === 0) return 0;
         return times.reduce((sum, time) => sum + time, 0) / times.length;
     }
     
-    // 시간을 분:초 형태로 변환
     function formatTime(seconds) {
         if (seconds === 0) return '-';
         const minutes = Math.floor(seconds / 60);
@@ -531,94 +503,80 @@ function renderCategoryStats() {
     const avg2 = calculateAverage(stage2Times);
     const avg3 = calculateAverage(stage3Times);
     
-    let html = `
+    // (이하 HTML 생성 코드는 기존과 동일하므로 생략)
+    // ... 기존 renderCategoryStats의 HTML 생성 로직 ...
+     let html = `
         <div style="space-y: 20px;">
             <h4 style="margin-bottom: 20px; color: #4a5568;">⏱️ 단계별 평균 고민 시간</h4>
-            
             <div style="margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #667eea;">
                     <div>
                         <div style="font-weight: bold; color: #2d3748;">1단계 (매력 카테고리 선택)</div>
                         <div style="font-size: 12px; color: #718096;">${stage1Times.length}명 데이터</div>
                     </div>
-                    <div style="font-size: 24px; font-weight: bold; color: #667eea;">
-                        ${formatTime(avg1)}
-                    </div>
+                    <div style="font-size: 24px; font-weight: bold; color: #667eea;">${formatTime(avg1)}</div>
                 </div>
             </div>
-            
             <div style="margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #38b2ac;">
                     <div>
                         <div style="font-weight: bold; color: #2d3748;">2단계 (상황&성향 질문)</div>
                         <div style="font-size: 12px; color: #718096;">${stage2Times.length}명 데이터</div>
                     </div>
-                    <div style="font-size: 24px; font-weight: bold; color: #38b2ac;">
-                        ${formatTime(avg2)}
-                    </div>
+                    <div style="font-size: 24px; font-weight: bold; color: #38b2ac;">${formatTime(avg2)}</div>
                 </div>
             </div>
-            
             <div style="margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #9f7aea;">
                     <div>
                         <div style="font-weight: bold; color: #2d3748;">3단계 (심층 성찰)</div>
                         <div style="font-size: 12px; color: #718096;">${stage3Times.length}명 데이터</div>
                     </div>
-                    <div style="font-size: 24px; font-weight: bold; color: #9f7aea;">
-                        ${formatTime(avg3)}
-                    </div>
+                    <div style="font-size: 24px; font-weight: bold; color: #9f7aea;">${formatTime(avg3)}</div>
                 </div>
             </div>
-            
             <div style="background: #edf2f7; padding: 15px; border-radius: 8px; text-align: center;">
                 <div style="font-size: 12px; color: #718096; margin-bottom: 5px;">전체 평균 소요 시간</div>
-                <div style="font-size: 28px; font-weight: bold; color: #4a5568;">
-                    ${formatTime(avg1 + avg2 + avg3)}
-                </div>
+                <div style="font-size: 28px; font-weight: bold; color: #4a5568;">${formatTime(avg1 + avg2 + avg3)}</div>
             </div>
         </div>
     `;
-    
     container.innerHTML = html;
 }
-function renderSurveyAnalysis() {
+
+function renderSurveyAnalysis(currentSurveys) {
     const container = document.getElementById('surveyAnalysis');
     
-    if (surveyData.length === 0) {
+    if (currentSurveys.length === 0) {
         container.innerHTML = '<div style="text-align: center; color: #718096; padding: 40px;">설문 응답이 없습니다.</div>';
         return;
     }
-    
- 
 
-    console.log('설문 분석 중인 데이터:', surveyData);
+    // 질문별 만족도 분석을 위한 필드 정의
+    const questionFields = [
+        { key: 'overall_satisfaction', label: '전반적 만족도' },
+        { key: 'discovery_help', label: '매력 발견 도움도' },
+        { key: 'recommendation', label: '추천 의향' },
+        { key: 'stage1_rating', label: '1단계 평가' },
+        { key: 'stage2_rating', label: '2단계 평가' },
+        { key: 'stage3_rating', label: '3단계 평가' },
+        { key: 'onboarding_rating', label: '온보딩 메시지 유용성' },
+        { key: 'skip_option_rating', label: '건너뛰기 옵션 유용성' },
+        { key: 'example_rating', label: '답변 예시 유용성' },
+        { key: 'template_rating', label: '글쓰기 템플릿 유용성' },
+        { key: 'keywords_rating', label: '키워드 리스트 유용성' },
+        { key: 'understanding_improvement', label: '자기 이해 향상' },
+        { key: 'positivity_improvement', label: '긍정적 사고 개선' }
+    ];
     
-   // 질문별 만족도 분석 (기존 8개 + 새로운 5개 = 총 13개)
-const questionFields = [
-    { key: 'overall_satisfaction', label: '전반적 만족도' },
-    { key: 'discovery_help', label: '매력 발견 도움도' },
-    { key: 'recommendation', label: '추천 의향' },
-    { key: 'stage1_rating', label: '1단계 평가' },
-    { key: 'stage2_rating', label: '2단계 평가' },
-    { key: 'stage3_rating', label: '3단계 평가' },
-    { key: 'onboarding_rating', label: '온보딩 메시지 유용성' },
-    { key: 'skip_option_rating', label: '건너뛰기 옵션 유용성' },
-    { key: 'example_rating', label: '답변 예시 유용성' },
-    { key: 'template_rating', label: '글쓰기 템플릿 유용성' },
-    { key: 'keywords_rating', label: '키워드 리스트 유용성' },
-    { key: 'understanding_improvement', label: '자기 이해 향상' },
-    { key: 'positivity_improvement', label: '긍정적 사고 개선' }
-];
-    
-   
+    // 주관식 피드백을 위한 필드 정의 (이 부분이 누락되었습니다)
     const feedbackFields = [
-    { key: 'positive_experience', label: '긍정적 경험' },           // ✅ 실제 필드
-    { key: 'understanding_reason', label: '자기 이해 이유' },       // ✅ 실제 필드  
-    { key: 'development_suggestion', label: '발전 제안' },         // ✅ 실제 필드
-    { key: 'needs_improvement', label: '개선이 필요한 부분' },      // ✅ 실제 필드
-    { key: 'improvement_reason', label: '개선 필요 이유' }          // ✅ 실제 필드
-];
+        { key: 'positive_experience', label: '긍정적 경험' },
+        { key: 'understanding_reason', label: '자기 이해 이유' },
+        { key: 'development_suggestion', label: '발전 제안' },
+        { key: 'needs_improvement', label: '개선이 필요한 부분' },
+        { key: 'improvement_reason', label: '개선 필요 이유' }
+    ];
     
     let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">';
     
@@ -627,7 +585,7 @@ const questionFields = [
     html += '<h4 style="margin-bottom: 15px; color: #4a5568;">📊 질문별 평균 만족도</h4>';
     
     questionFields.forEach(field => {
-        const scores = surveyData
+        const scores = currentSurveys
             .map(survey => parseInt(survey[field.key]))
             .filter(score => !isNaN(score) && score >= 1 && score <= 5);
         
@@ -651,41 +609,41 @@ const questionFields = [
     
     html += '</div>';
     
-   // 🔥 오른쪽: 질문별 주관식 피드백 (모달 버튼으로 변경)
-html += '<div>';
-html += '<h4 style="margin-bottom: 15px; color: #4a5568;">💬 질문별 주관식 피드백</h4>';
-html += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">';
+    // 오른쪽: 질문별 주관식 피드백 (누락되었던 버튼 생성 로직)
+    html += '<div>';
+    html += '<h4 style="margin-bottom: 15px; color: #4a5568;">💬 질문별 주관식 피드백</h4>';
+    html += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">';
 
-feedbackFields.forEach(field => {
-    const feedbacks = surveyData
-        .map(survey => ({
-            feedback: survey[field.key],
-            timestamp: survey.timestamp,
-            userId: survey.userId
-        }))
-        .filter(item => item.feedback && item.feedback.trim());
-    
-    html += `
-        <button onclick="showFeedbackModal('${field.key}', '${field.label}')" 
-                style="padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; text-align: center; transition: all 0.3s ease;"
-                onmouseover="this.style.background='#edf2f7'"
-                onmouseout="this.style.background='#f8fafc'">
-            <div style="font-weight: bold; color: #4a5568; margin-bottom: 5px;">${field.label}</div>
-            <div style="font-size: 24px; font-weight: bold; color: #667eea;">${feedbacks.length}개</div>
-            <div style="font-size: 12px; color: #718096;">응답 보기</div>
-        </button>
-    `;
-});
+    feedbackFields.forEach(field => {
+        const feedbacks = currentSurveys
+            .map(survey => ({
+                feedback: survey[field.key],
+                timestamp: survey.timestamp,
+                userId: survey.userId
+            }))
+            .filter(item => item.feedback && item.feedback.trim());
+        
+        html += `
+            <button onclick="showFeedbackModal('${field.key}', '${field.label}')" 
+                    style="padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; text-align: center; transition: all 0.3s ease;"
+                    onmouseover="this.style.background='#edf2f7'"
+                    onmouseout="this.style.background='#f8fafc'">
+                <div style="font-weight: bold; color: #4a5568; margin-bottom: 5px;">${field.label}</div>
+                <div style="font-size: 24px; font-weight: bold; color: #667eea;">${feedbacks.length}개</div>
+                <div style="font-size: 12px; color: #718096;">응답 보기</div>
+            </button>
+        `;
+    });
 
-html += '</div>';
-html += '</div>';
-    html += '</div>';
+    html += '</div>'; // grid 닫기
+    html += '</div>'; // 오른쪽 div 닫기
+    html += '</div>'; // 전체 div 닫기
     
     container.innerHTML = html;
 }
-
 function refreshData() {
     console.log('🔄 데이터 새로고침...');
+    selectedUserIds.clear(); // 새로고침 시 선택 해제
     loadDashboardData();
 }
 
@@ -693,9 +651,64 @@ function exportData() {
     alert('데이터 내보내기 기능 준비 중입니다.');
 }
 
-function clearAllData() {
-    if (confirm('정말로 모든 데이터를 삭제하시겠습니까?')) {
-        alert('데이터 삭제 기능 준비 중입니다.');
+// [수정] 사용자를 클릭했을 때의 동작을 단일 선택 필터링으로 변경
+function toggleUserSelection(rowElement, userId) {
+    // 이미 선택된 ID인지 확인
+    const isSelected = selectedUserIds.has(userId);
+
+    // 모든 선택 상태 초기화
+    document.querySelectorAll('#recentUsers .data-table tbody tr').forEach(tr => tr.classList.remove('selected'));
+    selectedUserIds.clear();
+
+    if (!isSelected) {
+        // 이전에 선택되지 않았다면, 새로 선택
+        selectedUserIds.add(userId);
+        rowElement.classList.add('selected');
+    }
+    // 이미 선택된 상태였다면, clear()에 의해 선택이 해제됨
+
+    // 대시보드 전체를 다시 그립니다.
+    rerenderDashboard();
+}
+
+// [수정] 삭제 버튼 상태 업데이트
+function updateDeleteButtonState() {
+    const deleteButton = document.getElementById('deleteButton');
+    const count = selectedUserIds.size;
+
+    if (count > 0) {
+        deleteButton.disabled = false;
+        // 텍스트를 "선택한 1개 데이터 삭제"로 고정하거나, 더 명확하게 변경 가능
+        deleteButton.textContent = `🗑️ 선택한 데이터 삭제`;
+    } else {
+        deleteButton.disabled = true;
+        deleteButton.textContent = '🗑️ 데이터 삭제';
+    }
+}
+
+// [수정] 선택된 단일 데이터 삭제
+async function deleteSelectedData() {
+    if (selectedUserIds.size === 0) return;
+
+    const userIdToDelete = selectedUserIds.values().next().value;
+    if (!confirm(`정말로 선택한 데이터를 삭제하시겠습니까? (ID: ${userIdToDelete})`)) {
+        return;
+    }
+
+    const deleteButton = document.getElementById('deleteButton');
+    deleteButton.disabled = true;
+    deleteButton.textContent = '삭제 중...';
+
+    try {
+        await window.deleteDoc(window.doc(window.db, 'complete_responses', userIdToDelete));
+        alert(`데이터가 성공적으로 삭제되었습니다.`);
+        
+        selectedUserIds.clear(); // 삭제 후 선택 해제
+        loadDashboardData(); // 목록 새로고침
+    } catch (error) {
+        console.error("데이터 삭제 실패:", error);
+        alert("데이터 삭제 중 오류가 발생했습니다.");
+        updateDeleteButtonState();
     }
 }
 
@@ -713,8 +726,16 @@ function startDashboard() {
 window.addEventListener('load', startDashboard);
 
 // 🔥 피드백 모달 표시 함수
+// 🔥 피드백 모달 표시 함수 (수정됨)
 function showFeedbackModal(fieldKey, fieldLabel) {
-    const feedbacks = surveyData
+    // 1. 현재 선택된 사용자가 있는지 확인합니다.
+    const filteredUserId = selectedUserIds.size > 0 ? selectedUserIds.values().next().value : null;
+
+    // 2. 선택된 사용자가 있으면 해당 사용자 데이터만, 없으면 전체 데이터를 사용합니다.
+    const dataSource = filteredUserId ? surveyData.filter(s => s.id === filteredUserId) : surveyData;
+
+    // 3. 위에서 결정된 데이터 소스(dataSource)를 기반으로 피드백을 추출합니다.
+    const feedbacks = dataSource
         .map(survey => ({
             feedback: survey[fieldKey],
             timestamp: survey.timestamp,
@@ -722,6 +743,7 @@ function showFeedbackModal(fieldKey, fieldLabel) {
         }))
         .filter(item => item.feedback && item.feedback.trim());
     
+    // 4. 추출된 피드백으로 모달창의 HTML을 생성합니다. (이하 로직은 기존과 동일)
     let modalHtml = `
         <div id="feedbackModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
             <div style="background: white; width: 80%; max-width: 600px; max-height: 80%; border-radius: 10px; overflow: hidden;">
@@ -757,7 +779,6 @@ function showFeedbackModal(fieldKey, fieldLabel) {
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
-
 // 🔥 피드백 모달 닫기 함수
 function closeFeedbackModal() {
     const modal = document.getElementById('feedbackModal');
