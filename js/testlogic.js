@@ -4409,44 +4409,68 @@ function toggleGuideQuestions(button, questionId, subIndex) {
     }
 }
 
+// ✅ testlogic.js 파일에 이 함수를 추가해주세요.
+
+/**
+ * 매력 키워드 선택 모달을 열고, 현재 작업 중인 질문 정보를 저장하는 함수
+ * @param {number} questionId - 현재 질문 그룹의 ID
+ * @param {number} subIndex - 현재 하위 질문의 인덱스
+ */
+
 // ==================== 매력 키워드 시스템 (완전 새 버전) ====================
 
 // 매력 키워드 모달 열기 함수
+// ...기존 코드...
+
+// ==================== 매력 키워드 시스템 (완전 새 버전) ====================
+
+// 매력 키워드 모달 열기 함수
+// ...existing code...
+
+// 매력 키워드 모달 열기 함수
+// ...existing code...
+
+// ==================== 매력 키워드 시스템 (완전 새 버전) ====================
+
+// 매력 키워드 모달 열기 함수
+let isAttractionModalProcessing = false; // 모달 처리 중복 방지 플래그
+
+// ==================== [최종 버전] 매력 키워드 모달 열기 함수 ====================
+// 이 함수 하나만 남기고, 다른 모든 showAttractionKeywords 함수는 삭제해주세요.
+
 function showAttractionKeywords(questionId, subIndex) {
-    // 현재 질문 정보 저장
+    // 현재 어떤 질문의 키워드를 선택 중인지 전역 변수에 저장합니다.
     window.currentQuestionId = questionId;
     window.currentSubIndex = subIndex;
-    window.tempSelectedKeywords = []; // 임시 선택 키워드 저장
+    window.tempSelectedKeywords = []; // 모달이 열릴 때마다 임시 선택 목록을 초기화합니다.
     
-    console.log('매력 키워드 모달 열기:', questionId, subIndex);
+    console.log(`[실행] 매력 키워드 모달을 엽니다: 질문 ID ${questionId}, 하위 질문 ${subIndex}`);
     
     const content = document.getElementById('attractionContent');
+    const modal = document.getElementById('attractionModal');
     
-    // 매력 키워드 데이터 (원본 데이터 사용)
-    const attractionKeywords = {
-        "이해심 및 공감 능력": ["다정함", "공감 능력", "이해심", "배려심", "경청 능력", "위로 능력", "섬세함"],
-        "성실성 및 책임감": ["성실함", "책임감", "인내심", "계획성", "세심함", "신중함", "절제력"],
-        "지적 호기심 및 개방성": ["호기심", "창의성", "열린 마음", "모험심", "비판적 사고력", "통찰력", "넓은 시야", "집중력"],
-        "정서적 안정 및 자기 인식": ["침착함", "안정감", "자기 성찰", "긍정적", "현실 감각", "자기 객관화", "자존감", "겸손"],
-        "도덕성 및 양심": ["정직함", "양심", "일관성", "원칙 준수", "진정성", "약자보호"],
-        "유머감각 및 사교성": ["유머 감각", "분위기 메이커", "다양한 친분", "타인을 편하게 해주는 능력", "연락 등 관계를 이어가는 능력", "사교적 에너지"],
-        "목표 지향성 및 야망": ["목표 의식", "열정", "자기 계발 의지", "리더십", "야망", "경쟁심", "전략적 사고"]
-    };
+    // 모달을 표시하는 데 필요한 HTML 요소들이 존재하는지 다시 한번 확인합니다.
+    if (!content || !modal) {
+        console.error("치명적인 오류: 모달 HTML 요소(attractionContent 또는 attractionModal)를 찾을 수 없습니다. index.html 파일을 확인해주세요.");
+        return; // 필수 요소가 없으면 함수 실행을 중단합니다.
+    }
+
+    // testSystem 객체에서 키워드 데이터를 가져옵니다.
+    const attractionKeywordsData = testSystem.getAttractionKeywords();
     
     let html = `
         <div class="attraction-guide">
             <div class="attraction-guide-icon">✨</div>
             <div class="attraction-guide-text">
-                <strong>매력 키워드를 참고해서 답변을 더 풍부하게 만들어보세요!</strong><br>
-                원하는 키워드를 클릭해서 선택한 후, "선택 완료" 버튼을 눌러주세요.
+                <strong>답변과 관련된 매력 키워드를 모두 선택해주세요.</strong><br>
+                선택이 끝나면 '선택 완료' 버튼을 눌러주세요.
             </div>
         </div>
-        
         <div class="attraction-keywords">
     `;
     
-    // 각 카테고리별 키워드 생성
-    Object.entries(attractionKeywords).forEach(([category, keywords]) => {
+    // 각 카테고리별로 키워드 버튼 HTML을 생성합니다.
+    Object.entries(attractionKeywordsData).forEach(([category, keywords]) => {
         html += `
             <div class="attraction-category">
                 <div class="attraction-category-title">${category}</div>
@@ -4461,14 +4485,79 @@ function showAttractionKeywords(questionId, subIndex) {
         `;
     });
     
-    html += `
-        </div>
-        
-    `;
+    html += `</div>`;
     
+    // 1. 완성된 HTML로 모달 내용을 채웁니다.
     content.innerHTML = html;
-    document.getElementById('attractionModal').style.display = 'block';
+    
+    // 2. (가장 중요) 모달을 화면에 보여주는 명령을 실행합니다.
+    modal.style.display = 'block';
+    
+    console.log("✅ 모달 표시 명령(modal.style.display = 'block')이 성공적으로 실행되었습니다.");
 }
+
+// ...existing code...
+
+// 모달 닫기 함수
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+        console.log(`[closeModal] 모달 '${modalId}'의 display 스타일을 'none'으로 설정했습니다.`);
+        if (modalId === 'attractionModal') {
+            isAttractionModalProcessing = false; // 매력 키워드 모달이 닫힐 때 플래그 리셋
+        }
+    } else {
+        console.warn(`[closeModal] 모달 '${modalId}'을 찾을 수 없습니다.`);
+    }
+}
+
+// 모달 외부 클릭시 닫기
+window.onclick = function(event) {
+    const modals = ['exampleModal', 'templateModal', 'attractionModal'];
+    modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (modal && event.target == modal) { // event.target이 모달 자체일 때만 닫도록 수정
+            console.log(`[window.onclick] 모달 외부 클릭 감지: event.target ID는 '${event.target.id}', 닫으려는 modalId는 '${modalId}'`);
+            closeModal(modalId);
+        }
+    });
+}
+// ...existing code...
+
+// ...existing code...
+
+// 모달 닫기 함수 (기존 함수가 없다면 추가)
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+        console.log(`[closeModal] 모달 '${modalId}'의 display 스타일을 'none'으로 설정했습니다.`); // 로그 추가
+    } else {
+        console.warn(`[closeModal] 모달 '${modalId}'을 찾을 수 없습니다.`); // 로그 추가
+    }
+}
+
+// 모달 외부 클릭시 닫기 (기존 함수 업데이트)
+window.onclick = function(event) {
+    const modals = ['exampleModal', 'templateModal', 'attractionModal'];
+    modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (modal && event.target == modal) {
+            console.log(`[window.onclick] 모달 외부 클릭 감지: event.target ID는 '${event.target.id}', 닫으려는 modalId는 '${modalId}'`); // 로그 추가
+            closeModal(modalId);
+        }
+    });
+}
+// ...existing code...
+
+// ...기존 코드...
+// 키워드 선택/해제 토글 함수
+function toggleKeywordSelection(keyword, element) {
+// ...기존 코드...
+}
+
+// ...기존 코드...
 
 // 키워드 선택/해제 토글 함수
 function toggleKeywordSelection(keyword, element) {
