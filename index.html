@@ -957,6 +957,107 @@
 .feature-description strong {
     color: #2d3748;
 }
+
+/* ▼▼▼ 인터랙티브 데모 스타일 (Line-Arrow Guide) ▼▼▼ */
+/* ▼▼▼ 인터랙티브 데모 스타일 (Box-Guide Version) ▼▼▼ */
+.interactive-demo-container {
+    position: relative;
+    margin: 20px auto;
+    max-width: 700px;
+}
+
+/* 설명 박스 컨테이너 (3단 그리드) */
+.guide-boxes-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 0 10px;
+}
+
+/* 설명 박스 개별 스타일 */
+.guide-box {
+    background: #f8f9fa;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    text-align: center;
+    position: relative;
+    padding-bottom: 10px; /* 화살표 공간 */
+    animation: fadeIn 0.5s ease-out forwards;
+    opacity: 0;
+}
+/* 박스 순차적 등장 애니메이션 */
+.guide-box:nth-child(1) { animation-delay: 0.1s; }
+.guide-box:nth-child(2) { animation-delay: 0.3s; }
+.guide-box:nth-child(3) { animation-delay: 0.5s; }
+
+.guide-box-content {
+    padding: 18px;
+}
+
+.guide-box strong {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2d3748;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.guide-box p {
+    font-size: 12px;
+    color: #718096;
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* 박스 아래 화살표 (CSS로만 제작) */
+.guide-box-arrow {
+    width: 0; 
+    height: 0; 
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 10px solid #f8f9fa; /* 박스 배경색과 동일 */
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+.guide-box-arrow::after { /* 화살표 테두리 */
+    content: '';
+    width: 0; 
+    height: 0; 
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 10px solid #e2e8f0; /* 박스 테두리색과 동일 */
+    position: absolute;
+    top: -11px; /* 테두리 두께만큼 위로 */
+    left: -10px;
+    z-index: -1;
+}
+
+.demo-card {
+    border: 2px dashed #a3bffa;
+    background-color: #fbfcff;
+}
+
+/* 나머지 데모 스타일 (이전과 동일) */
+.demo-content-wrapper { margin-top: 15px; }
+.guide-questions-container, .example-container {
+    display: none; padding: 20px; border-radius: 8px; margin: 0 25px 15px 25px;
+    animation: fadeInDown 0.4s ease-out;
+}
+.guide-questions-container { background: #f8f9fa; border: 1px solid #e2e8f0; }
+.example-container { background: #f0fff4; border: 1px solid #c6f6d5; }
+.guide-questions-container.visible, .example-container.visible { display: block; }
+.guide-title, .example-title { font-weight: bold; margin-bottom: 15px; font-size: 14px; }
+.guide-title { color: #5a67d8; }
+.example-title { color: #38a169; }
+.guide-questions-container ul { margin:0; padding-left: 20px; }
+.guide-questions-container li { font-size: 13px; color: #4a5568; margin-bottom: 5px; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeInDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ▲▲▲ 인터랙티브 데모 스타일 종료 ▲▲▲ */
     </style>
 </head>
 <body>
@@ -1124,48 +1225,148 @@
             </div>
         </div>
 
-                <div id="stage3_onboarding" class="stage" style="display:none;">
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: 75%"></div>
-            </div>
-            <h2>3단계: 심층 성찰 질문</h2>
-            <div class="onboarding-content">
-                <p class="onboarding-intro">
-                    이제 마지막 단계입니다! 👏<br>
-                    지금까지의 선택을 바탕으로, 당신의 매력과 관련된 <strong>두 가지 심층 질문</strong>이 제시됩니다.<br>
-                    당신의 경험과 생각을 자유롭게 작성하며, 스스로를 더 깊이 탐색하는 시간을 가져보세요.
-                </p>
+ <div id="stage3_onboarding" class="stage" style="display:none;">
+    <div class="progress-bar">
+        <div class="progress-fill" style="width: 75%"></div>
+    </div>
+    <h2>3단계: 심층 성찰 질문</h2>
+    <div class="onboarding-content">
+        <p class="onboarding-intro">
+            이제 마지막 단계입니다! 👏<br>
+            지금까지의 선택을 바탕으로, 당신의 매력과 관련된 <strong>두 가지 심층 질문</strong>이 제시됩니다.<br>
+            본격적인 시작에 앞서, 답변을 도와줄 유용한 기능들을 먼저 체험해보세요.
+        </p>
 
-                <div class="feature-list">
-                    <h4 class="feature-list-title">💡 답변을 돕는 유용한 기능들을 활용해보세요!</h4>
-                    <div class="feature-item">
-                        <div class="feature-icon">📝</div>
-                        <div class="feature-description">
-                            <strong>길잡이 질문:</strong> 어떻게 답을 시작할지 막막할 때, 생각의 흐름을 도와주는 가이드 질문들을 보여줍니다.
-                        </div>
+        <div class="interactive-demo-container">
+            <div class="reflection-question-card demo-card">
+                <div class="reflection-question-header">
+                    <span class="reflection-question-title">주도적으로 개선한 경험</span>
+                    <span class="reflection-question-number">DEMO</span>
+                </div>
+                <p class="reflection-sub-question-title" style="color: #4a5568; line-height: 1.5;">누가 먼저 부탁하지 않았는데도, '이건 내가 한번 해봐야겠다!' 싶어서 먼저 나서서 어떤 일을 더 좋게 만들려고 했던 경험이 있다면 먼저 그 이야기를 들려주세요.</p>
+                
+                <div class="helper-buttons">
+                    <button class="helper-btn" id="demoGuideBtn">📝 길잡이 질문</button>
+                    <button class="helper-btn" id="demoExampleBtn">💡 예시 보기</button>
+                    <button class="helper-btn" id="demoKeywordBtn">✨ 매력 키워드</button>
+                </div>
+
+<div class="guide-boxes-container">
+    <div class="guide-box">
+        <div class="guide-box-content">
+            <strong>📝 길잡이 질문</strong>
+            <p>답변이 막막할 때<br>생각의 실마리를 제공합니다.</p>
+        </div>
+        <div class="guide-box-arrow"></div>
+    </div>
+    
+    <div class="guide-box">
+        <div class="guide-box-content">
+            <strong>💡 예시 보기</strong>
+            <p>다른 사람의 답변을 참고하며<br>아이디어를 얻어보세요.</p>
+        </div>
+        <div class="guide-box-arrow"></div>
+    </div>
+
+    <div class="guide-box">
+        <div class="guide-box-content">
+            <strong>✨ 매력 키워드</strong>
+            <p>경험과 관련된 매력을 선택해<br>답변을 풍부하게 만들어요.</p>
+        </div>
+        <div class="guide-box-arrow"></div>
+    </div>
+</div>
+
+                <div class="demo-content-wrapper">
+                    <div class="guide-questions-container" id="demoGuideContainer">
+                        <p class="guide-title">💡 이런 질문들로 생각을 시작해볼 수 있어요.</p>
+                        <ul>
+                            <li>그때 어떤 상황이었고, 어떤 감정을 느꼈나요?</li>
+                            <li>어떤 행동을 했고, 그 결과는 어땠나요?</li>
+                        </ul>
                     </div>
-                    <div class="feature-item">
-                        <div class="feature-icon">💡</div>
-                        <div class="feature-description">
-                            <strong>예시 보기:</strong> 다른 사람들은 어떻게 답변했는지 참고할 수 있는 예시들을 보여줍니다.
-                        </div>
-                    </div>
-                    <div class="feature-item">
-                        <div class="feature-icon">✨</div>
-                        <div class="feature-description">
-                            <strong>매력 키워드 선택:</strong> 당신의 답변과 관련된 매력 키워드를 선택하여 답변을 더욱 풍부하게 만들 수 있습니다.
+                    <div class="example-container" id="demoExampleContainer">
+                         <p class="example-title">💡 다른 사람들은 이렇게 답변했어요.</p>
+                         <div class="example-item" style="border-left-color: #48bb78; margin: 0; background: white;">
+                            <p>"동아리 회의실이 항상 어수선해서 자료 찾기가 어려웠는데, 제가 먼저 나서서 파일링 시스템을 만들어 정리했어요. 누가 시키지 않았는데 그냥 해야겠다 싶더라고요."</p>
                         </div>
                     </div>
                 </div>
 
-                <p class="onboarding-outro">
-                    준비되셨나요? 당신의 이야기를 들려줄 시간입니다.
-                </p>
-                
-             
-                <button class="btn" onclick="startStage3()">네, 준비됐어요!</button>
+                <div class="textarea-container">
+                    <div class="selected-keywords">
+                        <div class="keywords-label">선택된 매력 키워드:</div>
+                        <div class="keywords-tags" id="demoKeywordsTags">
+                            <span class="no-keywords">아직 선택된 키워드가 없어요.</span>
+                        </div>
+                    </div>
+                    <div class="reflection-answer-box" contenteditable="true" placeholder="이곳에 직접 입력해보며 기능을 테스트할 수 있어요..."></div>
+                </div>
             </div>
         </div>
+        <p class="onboarding-outro">
+            준비되셨나요? 당신의 이야기를 들려줄 시간입니다.
+        </p>
+        <button class="btn" onclick="startStage3()">네, 준비됐어요!</button>
+    </div>
+</div>
+
+<div id="demoKeywordModal" class="modal">
+     <div class="modal-content">
+        <div class="modal-header">
+            <h4 class="modal-title">✨ 매력 키워드 선택</h4>
+            <button class="modal-close" onclick="closeDemoModal('demoKeywordModal')">&times;</button>
+        </div>
+        <div class="attraction-guide">
+            <div class="attraction-guide-icon">💡</div>
+            <div class="attraction-guide-text">
+                아래 키워드들을 눌러 당신의 경험과 관련된 매력을 추가해보세요.
+            </div>
+        </div>
+        <div class="attraction-keywords-list" style="margin-top: 20px; gap: 10px;">
+             <span class="attraction-keyword" onclick="addDemoKeyword('책임감')">책임감</span>
+             <span class="attraction-keyword" onclick="addDemoKeyword('성실함')">성실함</span>
+             <span class="attraction-keyword" onclick="addDemoKeyword('계획성')">계획성</span>
+             <span class="attraction-keyword" onclick="addDemoKeyword('주도성')">주도성</span>
+             <span class="attraction-keyword" onclick="addDemoKeyword('세심함')">세심함</span>
+             <span class="attraction-keyword" onclick="addDemoKeyword('적극성')">적극성</span>
+        </div>
+    </div>
+</div>
+
+<div id="demoExampleModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h4 class="modal-title">💡 답변 예시</h4>
+            <button class="modal-close" onclick="closeDemoModal('demoExampleModal')">&times;</button>
+        </div>
+        <div class="example-item">
+            <p class="example-label">예시 1</p>
+            <p>"동아리 회의실이 항상 어수선해서 자료 찾기가 어려웠는데, 제가 먼저 나서서 파일링 시스템을 만들어 정리했어요. 누가 시키지 않았는데 그냥 해야겠다 싶더라고요."</p>
+        </div>
+    </div>
+</div>
+
+<div id="demoKeywordModal" class="modal">
+     <div class="modal-content">
+        <div class="modal-header">
+            <h4 class="modal-title">✨ 매력 키워드</h4>
+            <button class="modal-close" onclick="closeDemoModal('demoKeywordModal')">&times;</button>
+        </div>
+        <div class="attraction-guide">
+            <div class="attraction-guide-icon">💡</div>
+            <div class="attraction-guide-text">
+                아래 키워드들을 눌러 당신의 경험과 관련된 매력을 추가해보세요.
+            </div>
+        </div>
+        <div class="attraction-keywords-list" style="margin-top: 20px;">
+             <span class="attraction-keyword" onclick="addDemoKeyword('책임감')">책임감</span>
+             <span class="attraction-keyword" onclick="addDemoKeyword('성실함')">성실함</span>
+             <span class="attraction-keyword" onclick="addDemoKeyword('계획성')">계획성</span>
+             <span class="attraction-keyword" onclick="addDemoKeyword('세심함')">세심함</span>
+        </div>
+    </div>
+</div>
 
         <div id="stage3_page1" class="stage" style="display:none;">
 
@@ -1344,7 +1545,82 @@
                 console.log('1단계 타이머 자동 시작');
             }
         }
+
+// ▼▼▼ 인터랙티브 데모 스크립트 (High-Fidelity) ▼▼▼
+
+document.addEventListener('DOMContentLoaded', () => {
+    const guideBtn = document.getElementById('demoGuideBtn');
+    const exampleBtn = document.getElementById('demoExampleBtn');
+    const keywordBtn = document.getElementById('demoKeywordBtn');
+    
+    const guideContainer = document.getElementById('demoGuideContainer');
+    const exampleContainer = document.getElementById('demoExampleContainer');
+    const keywordModal = document.getElementById('demoKeywordModal');
+
+    // 공통 토글 함수
+    function toggleDemoContainer(containerToShow) {
+        const allContainers = [guideContainer, exampleContainer];
+        
+        allContainers.forEach(container => {
+            if (container === containerToShow) {
+                container.classList.toggle('visible'); // 클릭한 건 토글
+            } else {
+                container.classList.remove('visible'); // 나머진 닫기
+            }
+        });
+    }
+
+    // 버튼 클릭 이벤트 설정
+    if(guideBtn) guideBtn.addEventListener('click', () => toggleDemoContainer(guideContainer));
+    if(exampleBtn) exampleBtn.addEventListener('click', () => toggleDemoContainer(exampleContainer));
+    if(keywordBtn) keywordBtn.addEventListener('click', () => {
+        if(keywordModal) keywordModal.style.display = 'block';
+    });
+});
+
+// 데모 모달 닫기
+function closeDemoModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if(modal) modal.style.display = 'none';
+}
+
+// 데모 키워드 추가/삭제
+function addDemoKeyword(keyword) {
+    const tagsContainer = document.getElementById('demoKeywordsTags');
+    if (!tagsContainer) return;
+    
+    const noKeywordsSpan = tagsContainer.querySelector('.no-keywords');
+    if (noKeywordsSpan) noKeywordsSpan.style.display = 'none';
+    
+    if (document.getElementById(`demo-tag-${keyword}`)) {
+        closeDemoModal('demoKeywordModal');
+        return;
+    }
+
+    const newTag = document.createElement('span');
+    newTag.className = 'keyword-tag';
+    newTag.id = `demo-tag-${keyword}`;
+    newTag.textContent = keyword;
+    
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-btn';
+    removeBtn.innerHTML = '&times;';
+    removeBtn.onclick = () => {
+        newTag.remove();
+        if (tagsContainer.querySelectorAll('.keyword-tag').length === 0) {
+             if (noKeywordsSpan) noKeywordsSpan.style.display = 'inline';
+        }
+    };
+    
+    newTag.appendChild(removeBtn);
+    tagsContainer.appendChild(newTag);
+    closeDemoModal('demoKeywordModal');
+}
+// ▲▲▲ 인터랙티브 데모 스크립트 종료 ▲▲▲
     </script>
+    
+
+
 
     <script src="js/testlogic.js"></script>
     
