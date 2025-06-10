@@ -1242,128 +1242,48 @@ function checkPersonalityCompletion() {
     }
 }
 
-// ==================== 2B단계 → 응답 확인 ====================
-function showResponseSummary() {
-    // 성향 질문 응답 수집
-    // 성향 질문 응답 수집
-const personalityResponses = [];
-// renderPersonalityQuestions 함수에서 testSystem 객체에 저장해둔
-// '현재 사용자에게 보여진' 개인화된 성향 질문 목록을 사용합니다.
-const personalizedPersonalityQuestions = testSystem.currentPersonalityQuestions || [];
 
-personalizedPersonalityQuestions.forEach(questionData => { // questionData는 {id, text, choices: {A, B}} 형태
-    const questionId = questionData.id;
-    const selectedRadio = document.querySelector(`input[name="question_${questionId}"]:checked`);
-
-    if (selectedRadio) {
-        const choiceLetter = selectedRadio.value;
-        // HTML의 data-* 속성에서 선택된 선지의 상세 정보를 가져옵니다.
-        const choiceText = selectedRadio.dataset.choiceText;
-        const choiceCategory = selectedRadio.dataset.choiceCategory;
-        // originalChoiceId는 성향 질문에서는 필수는 아니지만, 상황 질문과 형식을 맞추려면 추가해도 좋습니다.
-        // const originalChoiceId = selectedRadio.dataset.originalChoiceId; 
-
-        personalityResponses.push({
-            questionId: questionId,
-            questionText: questionData.text, // 원본 질문 텍스트
-            selectedChoice: { // 선택된 선지의 상세 정보
-                letter: choiceLetter,
-                text: choiceText,
-                category: choiceCategory
-                // originalChoiceId: originalChoiceId (필요시 추가)
-            }
-        });
-    }
-});
-
-testSystem.stage2_personality_responses = personalityResponses;
-console.log("개인화된 성향 질문 응답 수집 완료 (요약용): ", testSystem.stage2_personality_responses); // 확인용 로그
-    
-    autoSaveProgress();
-
-    // 응답 요약 렌더링
-    renderResponseSummary();
-    
-    // 화면 전환
-    document.getElementById('stage2Personality').style.display = 'none';
-    document.getElementById('responseSummary').style.display = 'block';
-}
 
 // testlogic.js - renderResponseSummary 함수 전체를 아래 내용으로 대체합니다.
 
-function renderResponseSummary() {
-    const container = document.getElementById('summaryContent');
-    container.innerHTML = ''; // 기존 요약 내용 초기화
-    
-    // --- 선택한 매력 카테고리 표시 ---
-    const categoryDiv = document.createElement('div');
-    categoryDiv.innerHTML = `
-        <h4 style="color: #5a67d8; margin-bottom: 15px;">선택한 매력 카테고리</h4>
-        <div class="summary-item">
-            <strong>${testSystem.stage1_selections.join(', ')}</strong>
-        </div>
-    `;
-    container.appendChild(categoryDiv);
-    
-    // --- 상황 질문 요약 ---
-    const situationDiv = document.createElement('div');
-    situationDiv.innerHTML = '<h4 style="color: #5a67d8; margin: 25px 0 15px 0;">상황 질문 응답</h4>';
-    
-    if (testSystem.stage2_situation_responses && testSystem.stage2_situation_responses.length > 0) {
-        testSystem.stage2_situation_responses.forEach((response, index) => {
-            const summaryItemDiv = document.createElement('div');
-            summaryItemDiv.className = 'summary-item';
-            summaryItemDiv.innerHTML = `
-                <div style="font-weight: bold; margin-bottom: 8px;">
-                    질문 ${index + 1}: ${response.questionText || '질문 텍스트 없음'}
-                </div>
-                <div style="color: #5a67d8;">
-                    선택: ${response.selectedChoice.letter || ''}. ${response.selectedChoice.text || '선택 내용 없음'}
-                    ${response.selectedChoice.category ? ` <small><i>(카테고리: ${response.selectedChoice.category})</i></small>` : ''}
-                </div>
-            `;
-            situationDiv.appendChild(summaryItemDiv);
-        });
-    } else {
-        const noResponseDiv = document.createElement('div');
-        noResponseDiv.className = 'summary-item';
-        noResponseDiv.innerHTML = '<p>상황 질문에 대한 응답이 아직 없습니다.</p>';
-        situationDiv.appendChild(noResponseDiv);
-    }
-    container.appendChild(situationDiv);
-    
-    // --- 성향 질문 요약 (개인화된 응답 구조에 맞게 수정된 부분) ---
-    const personalityDiv = document.createElement('div');
-    personalityDiv.innerHTML = '<h4 style="color: #5a67d8; margin: 25px 0 15px 0;">성향 질문 응답</h4>';
-    
-    if (testSystem.stage2_personality_responses && testSystem.stage2_personality_responses.length > 0) {
-        testSystem.stage2_personality_responses.forEach((response, index) => {
-            const summaryItemDiv = document.createElement('div'); // 변수명 변경 (situationDiv와 충돌 방지)
-            summaryItemDiv.className = 'summary-item';
-            // response.questionText 와 response.selectedChoice.text (그리고 letter, category)를 사용합니다.
-            summaryItemDiv.innerHTML = `
-                <div style="font-weight: bold; margin-bottom: 8px;">
-                    질문 ${index + 1}: ${response.questionText || '질문 텍스트 없음'}
-                </div>
-                <div style="color: #5a67d8;">
-                    선택: ${response.selectedChoice.letter || ''}. ${response.selectedChoice.text || '선택 내용 없음'}
-                    ${response.selectedChoice.category ? ` <small><i>(카테고리: ${response.selectedChoice.category})</i></small>` : ''}
-                </div>
-            `;
-            personalityDiv.appendChild(summaryItemDiv); // summaryItemDiv를 personalityDiv에 추가
-        });
-    } else {
-        const noResponseDiv = document.createElement('div');
-        noResponseDiv.className = 'summary-item';
-        noResponseDiv.innerHTML = '<p>성향 질문에 대한 응답이 아직 없습니다.</p>';
-        personalityDiv.appendChild(noResponseDiv);
-    }
-    container.appendChild(personalityDiv);
-}
 
-function backToStage2Personality() {
-    document.getElementById('responseSummary').style.display = 'none';
-    document.getElementById('stage2Personality').style.display = 'block';
+
+// 2단계 성향 질문 -> 3단계 온보딩으로 바로 이동하는 새 함수
+function proceedToStage3Onboarding() {
+    // (기존 showResponseSummary 함수에서 가져온) 성향 질문 응답 수집 로직
+    const personalityResponses = [];
+    const personalizedPersonalityQuestions = testSystem.currentPersonalityQuestions || [];
+
+    personalizedPersonalityQuestions.forEach(questionData => {
+        const questionId = questionData.id;
+        const selectedRadio = document.querySelector(`input[name="question_${questionId}"]:checked`);
+
+        if (selectedRadio) {
+            const choiceLetter = selectedRadio.value;
+            const choiceText = selectedRadio.dataset.choiceText;
+            const choiceCategory = selectedRadio.dataset.choiceCategory;
+
+            personalityResponses.push({
+                questionId: questionId,
+                questionText: questionData.text,
+                selectedChoice: {
+                    letter: choiceLetter,
+                    text: choiceText,
+                    category: choiceCategory
+                }
+            });
+        }
+    });
+
+    testSystem.stage2_personality_responses = personalityResponses;
+    console.log("성향 질문 응답 수집 완료: ", testSystem.stage2_personality_responses);
+    
+    autoSaveProgress(); // 진행 상황 저장
+
+    // 화면 전환
+    document.getElementById('stage2Personality').style.display = 'none';
+    document.getElementById('stage3_onboarding').style.display = 'block';
+    console.log('✅ 3단계 온보딩 화면으로 이동합니다.');
 }
 
 // testlogic.js 파일 내
@@ -4716,12 +4636,14 @@ window.tempSelectedKeywords = [];
 console.log('✅ 매력 키워드 시스템 초기화 완료!');
 // 템플릿 사용 성공 메시지
 
-// 기존 renderSurvey 함수를 완전히 교체
 function renderSurvey() {
     const container = document.getElementById('surveyContainer');
+    if (!container) {
+        console.error('surveyContainer 요소를 찾을 수 없습니다.');
+        return;
+    }
     
     container.innerHTML = `
-        <!-- 설문 안내 메시지 -->
         <div style="background: #f0f4ff; border-radius: 10px; padding: 20px; margin-bottom: 30px; border-left: 4px solid #5a67d8;">
             <p style="margin: 0; color: #4c51bf; line-height: 1.6;">
                 <strong>안녕하세요! ASTER의 '내적 매력 탐구 프로그램'을 경험해주셔서 감사합니다.</strong><br>
@@ -4732,7 +4654,6 @@ function renderSurvey() {
         </div>
         
         <form id="surveyForm">
-            <!-- I. 프로그램 전반적 평가 -->
             <div class="survey-section">
                 <div class="survey-section-title">I. 프로그램 전반적 평가</div>
                 
@@ -4779,7 +4700,6 @@ function renderSurvey() {
                 </div>
             </div>
 
-            <!-- II. 프로그램 단계별 및 기능별 평가 -->
             <div class="survey-section">
                 <div class="survey-section-title">II. 프로그램 단계별 및 기능별 평가</div>
                 
@@ -4803,7 +4723,7 @@ function renderSurvey() {
                 </div>
 
                 <div class="survey-question">
-                    <div class="survey-question-title">2단계 (4지선다 상황 질문 & 2지선다 성향 질문, 총 8개):</div>
+                    <div class="survey-question-title">2단계 (4지선다 상황 질문 & 2지선다 성향 질문):</div>
                     <div class="rating-scale">
                         ${[1,2,3,4,5].map(num => `
                             <div class="rating-item">
@@ -4815,7 +4735,7 @@ function renderSurvey() {
                 </div>
 
                 <div class="survey-question">
-                    <div class="survey-question-title">3단계 (심층 성찰 주관식 질문 4개 및 보조 기능):</div>
+                    <div class="survey-question-title">3단계 (심층 성찰 주관식 질문 및 보조 기능):</div>
                     <div class="rating-scale">
                         ${[1,2,3,4,5].map(num => `
                             <div class="rating-item">
@@ -4837,9 +4757,8 @@ function renderSurvey() {
                         <option value="2단계 2지선다 질문 (성향)">2단계 2지선다 질문 (성향)</option>
                         <option value="3단계 성찰 질문">3단계 성찰 질문</option>
                         <option value="3단계 답변 예시">3단계 답변 예시</option>
-                        <option value="3단계 글쓰기 템플릿">3단계 글쓰기 템플릿</option>
+                        <option value="3단계 글쓰기 템플릿">3단계 길잡이 질문</option>
                         <option value="3단계 매력 리스트 참고">3단계 매력 리스트 참고</option>
-                        <option value="건너뛰기 옵션">건너뛰기 옵션</option>
                         <option value="기타">기타</option>
                     </select>
                     <textarea class="text-input" name="improvement_reason" placeholder="(선택 사항) 이유를 간략히 적어주세요..." style="min-height: 80px; margin-top: 10px;"></textarea>
@@ -4865,18 +4784,6 @@ function renderSurvey() {
                 </div>
 
                 <div class="survey-question">
-                    <div class="survey-question-title">건너뛰기 옵션 (다른 질문 보기, 나중에 답하기, 답변 그만하기):</div>
-                    <div class="rating-scale">
-                        ${[1,2,3,4,5].map(num => `
-                            <div class="rating-item">
-                                <input type="radio" name="skip_option_rating" value="${num}" required>
-                                <div class="rating-label">${num}</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-
-                <div class="survey-question">
                     <div class="survey-question-title">답변 예시 보기:</div>
                     <div class="rating-scale">
                         ${[1,2,3,4,5].map(num => `
@@ -4889,7 +4796,7 @@ function renderSurvey() {
                 </div>
 
                 <div class="survey-question">
-                    <div class="survey-question-title">글쓰기 템플릿 사용:</div>
+                    <div class="survey-question-title">길잡이 질문:</div>
                     <div class="rating-scale">
                         ${[1,2,3,4,5].map(num => `
                             <div class="rating-item">
@@ -4913,7 +4820,6 @@ function renderSurvey() {
                 </div>
             </div>
 
-            <!-- III. 프로그램 경험 및 발전 방향에 대한 의견 -->
             <div class="survey-section">
                 <div class="survey-section-title">III. 프로그램 경험 및 발전 방향에 대한 의견</div>
 
@@ -4964,7 +4870,6 @@ function renderSurvey() {
             </div>
         </form>
         
-        <!-- 감사 메시지 -->
         <div style="background: #f0fff4; border-radius: 10px; padding: 20px; margin-top: 30px; border-left: 4px solid #48bb78; text-align: center;">
             <p style="margin: 0; color: #2f855a; font-weight: bold;">
                 🙏 소중한 의견을 공유해주셔서 진심으로 감사드립니다.<br>

@@ -1058,6 +1058,59 @@
 @keyframes fadeInDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ▲▲▲ 인터랙티브 데모 스타일 종료 ▲▲▲ */
+
+/* ▼▼▼ 시작 페이지 안내 박스 강조 스타일 ▼▼▼ */
+.intro-notice-box {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px;
+    padding: 25px 30px;
+    max-width: 650px;
+    margin: 40px auto;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+}
+
+.notice-item {
+    display: flex;
+    flex-direction: column; /* 아이콘과 텍스트를 상하로 배치 */
+    align-items: center;   /* 전체 내용을 가운데 정렬 */
+    text-align: center;    /* 텍스트를 가운데 정렬 */
+    gap: 8px;              /* 아이콘과 텍스트 사이 간격 조정 */
+}
+
+.notice-item:first-child {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.notice-icon {
+    font-size: 24px;
+    line-height: 1.5;
+}
+
+.notice-text strong {
+    font-weight: 600;
+    font-size: 16px;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.notice-text p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.notice-text p strong {
+    font-weight: 600;
+    font-size: 14px;
+    color: white;
+    display: inline;
+}
+
+/* ▲▲▲ 시작 페이지 안내 박스 강조 스타일 종료 ▲▲▲ */
     </style>
 </head>
 <body>
@@ -1083,11 +1136,24 @@
                     </ul>
                 </div>
 
-                <p style="font-size: 14px; color: #4a5568; margin-bottom: 30px;">
-                    모든 과정은 약 15~20분 정도 소요됩니다.<br>
-                    이제, 당신의 숨겨진 매력을 탐험할 준비가 되셨나요?
-                </p>
-                <button class="btn" onclick="startTest()">테스트 시작하기</button>
+               <div class="intro-notice-box">
+    <div class="notice-item">
+        <div class="notice-icon">💡</div>
+        <div class="notice-text">
+            <strong>안내</strong>
+            <p>진행하는 동안 '이 선택은 나의 어떤 내적 매력과 연결될까?'를<br> 
+                계속 생각해보시면 더욱 의미 있는 여정이 될 거예요.</p>
+        </div>
+    </div>
+    <div class="notice-item">
+        <div class="notice-icon">🔒</div>
+        <div class="notice-text">
+            <strong>완벽한 익명성</strong>
+            <p>최종 피드백 설문을 제외한, 테스트 과정에서의 모든 답변은 <strong>그 어디에도 저장되지 않습니다.</strong><br> 안심하고 솔직한 당신의 이야기를 들려주세요.</p>
+        </div>
+    </div>
+</div>
+<button class="btn" onclick="startTest()">나의 매력 탐험 시작하기</button>
             </div>
         </div>
 
@@ -1098,9 +1164,10 @@
             </div>
             
             <h2>1단계: 중요한 매력 선택</h2>
-            <p style="text-align: center; margin-bottom: 30px; color: #718096;">
-                다음 7가지 매력 중에서 당신이 가장 중요하게 생각하거나 더 탐색하고 싶은 <strong>1~3개</strong>를 선택해주세요.
-            </p>
+           <p style="text-align: center; margin-bottom: 30px; color: #718096;">
+    다음 7가지 매력 중, 당신과 가장 잘 맞는다고<br>
+생각하는 매력은 무엇인가요? (1개 이상, 최대 3개 선택)
+</p>
             
             <div class="category-selection" id="categorySelection">
                 <div class="category-item" data-category="이해심 및 공감 능력">
@@ -1180,8 +1247,8 @@
             
             <h2>2단계: 상황 질문</h2>
             <p style="text-align: center; margin-bottom: 30px; color: #718096;">
-                다양한 상황에서 당신의 선택을 알려주세요. 총 4개의 상황 질문입니다.
-            </p>
+    다양한 상황 속 당신의 모습을 확인합니다.<br>각 선택지가 어떤 매력과 연결될지 생각하며 답변해보세요. (1/2)
+</p>
             
             <div id="situationQuestionsContainer"></div>
             
@@ -1197,33 +1264,16 @@
             
             <h2>2단계: 성향 질문</h2>
             <p style="text-align: center; margin-bottom: 30px; color: #718096;">
-                당신의 성향을 파악하는 질문입니다. 총 4개의 성향 질문입니다.
-            </p>
+    당신의 생각과 성향에 더 가까운 것을 선택해주세요.<br>선택을 통해 당신의 핵심적인 매력을 발견할 수 있습니다. (2/2)
+</p>
             
             <div id="personalityQuestionsContainer"></div>
             
             <div class="error-message" id="stage2PersonalityError" style="display: none;"></div>
-            <button class="btn" onclick="showResponseSummary()" id="stage2PersonalityBtn" disabled>응답 확인하기</button>
+            <button class="btn" onclick="proceedToStage3Onboarding()" id="stage2PersonalityBtn" disabled>성찰 질문으로</button>
         </div>
 
-        <!-- 2단계: 응답 확인 -->
-        <div id="responseSummary" class="stage" style="display:none;">
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: 70%"></div>
-            </div>
-            
-            <h2>당신의 응답 요약</h2>
-            <p style="text-align: center; margin-bottom: 30px; color: #718096;">
-                지금까지의 응답을 확인해보세요. 마음에 들지 않는다면 이전 단계로 돌아가 수정할 수 있습니다.
-            </p>
-            
-            <div class="response-summary" id="summaryContent"></div>
-            
-            <div style="text-align: center;">
-                <button class="btn btn-secondary" onclick="backToStage2Personality()">이전 단계</button>
-                 <button class="btn" onclick="showStage3Onboarding()">성찰 질문으로</button>
-            </div>
-        </div>
+        
 
  <div id="stage3_onboarding" class="stage" style="display:none;">
     <div class="progress-bar">
@@ -1231,11 +1281,12 @@
     </div>
     <h2>3단계: 심층 성찰 질문</h2>
     <div class="onboarding-content">
-        <p class="onboarding-intro">
-            이제 마지막 단계입니다! 👏<br>
-            지금까지의 선택을 바탕으로, 당신의 매력과 관련된 <strong>두 가지 심층 질문</strong>이 제시됩니다.<br>
-            본격적인 시작에 앞서, 답변을 도와줄 유용한 기능들을 먼저 체험해보세요.
-        </p>
+       <p class="onboarding-intro">
+    이제 마지막 단계입니다! 👏<br>
+    지금까지의 선택을 바탕으로, 당신의 매력과 관련된 <strong>두 가지 심층 질문</strong>이 제시됩니다.<br>
+    당신의 소중한 경험과 생각을 <strong>"진솔하고 구체적으로"</strong> 들려줄수록, 숨겨진 매력을 더 선명하게 발견할 수 있어요.<br>
+    <span style="font-size:14px; color: #718096;">(이곳에 작성하는 내용을 포함한 모든 답변은 저장되지 않으니, 편하게 작성하셔도 괜찮습니다.)</span>
+</p>
 
         <div class="interactive-demo-container">
             <div class="reflection-question-card demo-card">
