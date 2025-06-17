@@ -1113,11 +1113,9 @@
     display: inline;
 }
 
-/* =============================================== */
-/* ✨ 모바일 반응형 UI 개선 (768px 이하) ✨ */
-/* =============================================== */
+
 /* ================================================== */
-/* ✨ 모바일 반응형 UI 개선 (더 공격적인 버전) ✨ */
+/* ✨ 모바일 반응형 UI 개선 (온보딩 강화 버전) ✨ */
 /* ================================================== */
 @media (max-width: 768px) {
 
@@ -1147,31 +1145,32 @@
 
     /* 본문/설명 텍스트 가독성 최적화 */
     .intro-content p,
-    .stage > p {
+    .stage > p,
+    .onboarding-content p {
         font-size: 14px; 
         line-height: 1.6;
-        color: #555; /* 너무 진하지 않게 톤 조정 */
+        color: #555;
     }
 
     /* 2. 버튼 및 터치 영역 최적화 */
     .btn {
         padding: 14px 20px;
         font-size: 15px;
-        width: 90%; /* 너비 살짝 늘림 */
+        width: 90%;
         max-width: 320px;
     }
 
     .category-item,
     .choice-item {
-        padding: 12px 15px; /* 내부 여백 미세 조정 */
-        line-height: 1.5; /* 줄 간격 추가 */
+        padding: 12px 15px;
+        line-height: 1.5;
     }
     
     .category-item strong, .choice-item strong {
         font-size: 15px;
     }
     .category-item div, .choice-item div {
-        font-size: 13px; /* 설명 폰트도 살짝 줄임 */
+        font-size: 13px;
     }
 
 
@@ -1180,12 +1179,12 @@
     /* 1단계: 매력 선택 */
     .category-selection {
         grid-template-columns: 1fr;
-        gap: 10px; /* 아이템 간 간격 줄임 */
+        gap: 10px;
     }
 
     /* 2단계: 질문 카드 */
     .question-card, .survey-section {
-        padding: 15px; /* 카드 내부 여백 줄임 */
+        padding: 15px;
         margin-bottom: 20px;
     }
     .question-title, .survey-question-title {
@@ -1196,7 +1195,7 @@
     /* 3단계: 성찰 질문 */
     .reflection-question-card {
         padding: 15px;
-        margin-bottom: 25px; /* 카드 간 간격 조정 */
+        margin-bottom: 25px;
     }
     .reflection-question-title {
         font-size: 17px;
@@ -1205,7 +1204,7 @@
         padding: 12px;
     }
     .helper-buttons {
-        gap: 8px; /* 도우미 버튼 간격 줄임 */
+        gap: 8px;
         margin-top: 10px;
     }
     .helper-btn {
@@ -1213,15 +1212,60 @@
         font-size: 12px;
     }
     
-    /* 3단계 온보딩 데모 */
+    /* ========================================= */
+    /* ▼▼▼ 3단계 온보딩 페이지 모바일 최적화 ▼▼▼ */
+    /* ========================================= */
+    .onboarding-content {
+        margin-top: 0; /* 위쪽 여백 제거 */
+        text-align: left; /* 전체 텍스트 왼쪽 정렬 */
+    }
+    .onboarding-content .onboarding-intro {
+        text-align: center; /* 첫 문단만 중앙 정렬 유지 */
+        margin-bottom: 30px;
+    }
+
+    .interactive-demo-container {
+        margin: 0;
+    }
+
+    /* 설명 박스 3개를 가로 스크롤 가능한 형태로 변경 */
     .guide-boxes-container {
-        grid-template-columns: 1fr;
-        gap: 15px;
-        padding: 0;
+        display: flex; /* Flexbox로 변경 */
+        overflow-x: auto; /* 가로 스크롤 활성화 */
+        gap: 12px;
+        padding: 4px 15px; /* 좌우 패딩을 주어 스크롤 영역 확보 */
+        margin: 0 -15px 20px -15px; /* 스테이지 여백만큼 당겨서 꽉차게 */
+        -webkit-overflow-scrolling: touch; /* 부드러운 스크롤 효과 */
+        scrollbar-width: none; /* 스크롤바 숨기기 (Firefox) */
     }
-    .interactive-demo-container .reflection-question-card {
-        padding: 20px 15px; /* 데모 카드 여백 조정 */
+    .guide-boxes-container::-webkit-scrollbar {
+        display: none; /* 스크롤바 숨기기 (Chrome, Safari) */
     }
+
+    .guide-box {
+        flex: 0 0 75%; /* 각 박스가 너비의 75%를 차지하도록 함 */
+        max-width: 280px;
+        padding-bottom: 0; /* 화살표 제거 */
+        border-width: 1px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+    .guide-box-arrow {
+        display: none; /* 화살표는 모바일에서 숨김 */
+    }
+
+    /* 데모 카드 스타일 조정 */
+    .interactive-demo-container .reflection-question-card.demo-card {
+        padding: 15px;
+        border-width: 1px;
+    }
+    .interactive-demo-container .reflection-question-card .reflection-question-title {
+        font-size: 16px;
+    }
+    .interactive-demo-container .reflection-question-card .reflection-sub-question-title {
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
     .demo-content-wrapper {
         margin: 10px 0 0 0;
     }
@@ -1229,13 +1273,14 @@
         margin: 0 0 15px 0;
         padding: 15px;
     }
+    /* ▲▲▲ 3단계 온보딩 페이지 모바일 최적화 끝 ▲▲▲ */
 
 
     /* 4. 모달(팝업) UI 개선 */
     .modal-content {
         width: 95%;
         margin: 5% auto;
-        padding: 20px; /* 모달 내부 여백 줄임 */
+        padding: 20px;
         max-height: 88vh;
     }
     
@@ -1243,7 +1288,6 @@
         font-size: 17px;
     }
 
-    /* 매력 키워드 선택 모달 */
     .attraction-keywords {
         grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
         gap: 8px;
@@ -1259,7 +1303,7 @@
         font-size: 16px;
     }
     .rating-item {
-        min-width: 48px; /* 더 컴팩트하게 조정 */
+        min-width: 48px;
         gap: 6px;
     }
     .dropdown-select, .text-input {
