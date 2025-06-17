@@ -1110,12 +1110,152 @@
     display: inline;
 }
 
+/* =============================================== */
+/* ✨ 모바일 반응형 UI 개선 (768px 이하) ✨ */
+/* =============================================== */
+@media (max-width: 768px) {
+
+    /* 1. 기본 레이아웃 및 폰트 조정 */
+    body {
+        padding: 0; /* body의 여백을 없애고 #app에서 관리 */
+    }
+
+    #app {
+        width: 100%;
+        min-height: 100vh;
+        border-radius: 0; /* 모바일에서는 둥근 모서리 제거 */
+        box-shadow: none;
+    }
+    
+    .stage {
+        padding: 25px 20px; /* 상하, 좌우 여백 조정 */
+        min-height: calc(100vh - 50px);
+    }
+    
+    h2 {
+        font-size: 24px; /* 제목 폰트 크기 조정 */
+        line-height: 1.4;
+    }
+
+    .intro-content p,
+    .stage > p {
+        font-size: 15px; /* 본문/설명 텍스트 가독성 향상 */
+        line-height: 1.7;
+    }
+
+    /* 2. 버튼 및 터치 영역 개선 */
+    .btn {
+        padding: 14px 25px;
+        font-size: 15px;
+        width: 80%;
+        max-width: 300px;
+    }
+
+    .category-item,
+    .choice-item {
+        padding: 15px; /* 선택지 터치 영역 확보 */
+    }
+
+    /* 3. 스테이지별 UI 개선 */
+
+    /* 1단계: 매력 선택 */
+    .category-selection {
+        grid-template-columns: 1fr; /* 1열로 변경하여 세로 정렬 */
+        gap: 12px;
+    }
+
+    /* 2단계: 질문 카드 */
+    .question-card, .survey-section {
+        padding: 20px;
+    }
+    .question-title, .survey-question-title {
+        font-size: 16px;
+    }
+
+    /* 3단계: 성찰 질문 */
+    .reflection-question-card {
+        padding: 20px;
+    }
+    .reflection-question-title {
+        font-size: 18px;
+    }
+    .reflection-sub-question {
+        padding: 15px;
+    }
+    .helper-btn {
+        padding: 10px 16px; /* 도우미 버튼 터치 영역 확보 */
+        font-size: 13px;
+    }
+    
+    /* 3단계 온보딩 데모 */
+    .guide-boxes-container {
+        grid-template-columns: 1fr; /* 데모 박스도 1열로 변경 */
+        gap: 20px;
+        padding: 0;
+    }
+
+    /* 4. 모달(팝업) UI 개선 */
+    .modal-content {
+        width: 95%; /* 화면 너비에 꽉 차게 조정 */
+        margin: 5% auto;
+        padding: 25px;
+        max-height: 85vh; /* 모달 최대 높이 조정 */
+    }
+    
+    .modal-title {
+        font-size: 18px;
+    }
+
+    /* 매력 키워드 선택 모달 */
+    .attraction-keywords {
+        /* minmax의 최소값을 줄여 모바일에서 2-3열로 보이게 함 */
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 10px;
+    }
+    
+    .attraction-keyword {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+
+    /* 5. 설문조사 UI 개선 */
+    .rating-item {
+        min-width: 50px; /* 점수 평가 아이템 간격 조정 */
+        gap: 8px;
+    }
+    .rating-label {
+        font-size: 10px;
+    }
+}
+
+ #backToTopBtn {
+        display: none; /* 평소엔 숨김 */
+        position: fixed;
+        bottom: 25px;
+        right: 25px;
+        z-index: 100;
+        border: none;
+        outline: none;
+        background-color: rgba(90, 103, 216, 0.8);
+        color: white;
+        cursor: pointer;
+        padding: 12px;
+        border-radius: 50%;
+        width: 45px;
+        height: 45px;
+        font-size: 18px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        transition: background-color 0.3s;
+    }
+    #backToTopBtn:hover {
+        background-color: rgba(90, 103, 216, 1);
+    }
 /* ▲▲▲ 시작 페이지 안내 박스 강조 스타일 종료 ▲▲▲ */
     </style>
 </head>
 <body>
         
-        
+        <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" id="backToTopBtn" title="맨 위로">🔝</button>
  <div id="app">
         <div id="introStage" class="stage" style="display: block; text-align: center; padding-top: 60px; padding-bottom: 60px;">
             <div class="intro-content">

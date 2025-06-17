@@ -1784,8 +1784,54 @@ function insertKeyword(keyword) {
 }
 
 
-function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
+// testlogic.js 파일에 이 코드로 전체를 교체해주세요.
+
+function setupSurveyValidation() {
+    const form = document.getElementById('surveyForm');
+    const submitBtn = document.getElementById('surveySubmitBtn');
+
+    if (!form || !submitBtn) {
+        console.error("설문조사 form 또는 제출 버튼을 찾을 수 없습니다.");
+        return;
+    }
+
+    // ✅ 'skip_option_rating'이 제거된, 올바른 필수 필드 목록입니다.
+    const requiredFields = [
+        'overall_satisfaction', 'discovery_help', 'recommendation',
+        'stage1_rating', 'stage2_rating', 'stage3_rating',
+        'needs_improvement', 'onboarding_rating', 'example_rating',
+        'template_rating', 'keywords_rating', 'understanding_improvement',
+        'positivity_improvement'
+    ];
+
+    function checkFormCompletion() {
+        // ✅ 라디오 버튼과 다른 입력 필드를 명확히 구분하여 검증하는 새로운 로직입니다.
+        const allCompleted = requiredFields.every(fieldName => {
+            const element = form.querySelector(`[name="${fieldName}"]`);
+            if (!element) {
+                // 해당 이름의 요소가 아예 없으면 false 반환
+                return false; 
+            }
+
+            if (element.type === 'radio') {
+                // 타입이 라디오 버튼일 경우, :checked 된 것이 있는지 확인
+                return form.querySelector(`[name="${fieldName}"]:checked`) !== null;
+            } else {
+                // 라디오 버튼이 아닐 경우(select, textarea 등), 값이 있는지 확인
+                return !!element.value;
+            }
+        });
+
+        // 모든 필수 항목이 완료되었을 때만 버튼 활성화
+        submitBtn.disabled = !allCompleted;
+    }
+
+    // form에 이벤트 리스너를 추가하여, 변경이 있을 때마다 검증 함수를 실행
+    form.addEventListener('change', checkFormCompletion);
+    form.addEventListener('input', checkFormCompletion);
+
+    // 페이지 로드 시 초기 상태를 한 번 검사
+    checkFormCompletion();
 }
 
 // ==================== 설문조사 렌더링 ====================
@@ -1806,7 +1852,6 @@ function setupSurveyValidation() {
         'stage3_rating',
         'needs_improvement',
         'onboarding_rating',
-        'skip_option_rating',
         'example_rating',
         'template_rating',
         'keywords_rating',
@@ -1831,48 +1876,6 @@ function setupSurveyValidation() {
     checkFormCompletion();
 }
 
-// 설문 완료 여부 확인
-// ✅ 수정된 코드 - 모든 필수 필드 포함
-function checkSurveyCompletion() {
-    const requiredFields = [
-        'overall_satisfaction',
-        'discovery_help', 
-        'recommendation',
-        'stage1_rating',
-        'stage2_rating', 
-        'stage3_rating',
-        'needs_improvement',
-        'onboarding_rating',
-        'skip_option_rating',
-        'example_rating',
-        'template_rating',
-        'keywords_rating',
-        'understanding_improvement',
-        'positivity_improvement'
-    ];
-    
-    let allCompleted = true;
-    
-    requiredFields.forEach(fieldName => {
-        const field = document.querySelector(`[name="${fieldName}"]:checked`) || 
-                     document.querySelector(`[name="${fieldName}"]`);
-        if (!field || !field.value) {
-            allCompleted = false;
-        }
-    });
-    
-    const submitBtn = document.getElementById('surveySubmitBtn');
-    if (submitBtn) {
-        submitBtn.disabled = !allCompleted;
-        if (allCompleted) {
-            submitBtn.style.opacity = '1';
-            submitBtn.style.cursor = 'pointer';
-        } else {
-            submitBtn.style.opacity = '0.5';
-            submitBtn.style.cursor = 'not-allowed';
-        }
-    }
-}
 
 
 // 최종 완료 페이지 렌더링
@@ -2525,44 +2528,7 @@ function checkSurveyCompletion() {
 
 
 
-function showFinalComplete() {
-    document.getElementById('surveyStage').style.display = 'none';
-    document.getElementById('finalComplete').style.display = 'block';
-    
-    document.getElementById('completeContent').innerHTML = `
-        <div style="text-align: center; padding: 40px;">
-            <div style="font-size: 48px; margin-bottom: 20px;">🎊</div>
-            <h3 style="color: #5a67d8; margin-bottom: 20px;">소중한 참여 감사합니다!</h3>
-            <p style="color: #718096; line-height: 1.6;">
-                ASTER 프로그램을 통해 자신의 매력을 탐색하는 시간이 되셨기를 바랍니다.<br>
-                여러분의 피드백은 프로그램 개선에 큰 도움이 됩니다.
-            </p>
-            
-            <div style="margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 10px;">
-                <h4 style="color: #4a5568; margin-bottom: 15px;">🎯 당신이 선택한 매력 카테고리</h4>
-                <p style="font-size: 16px; font-weight: bold; color: #5a67d8;">
-                    ${testSystem.stage1_selections.join(' • ')}
-                </p>
-            </div>
-            
-            <div style="margin-top: 30px; padding: 20px; background: #f0f4ff; border-radius: 10px;">
-                <p style="font-size: 14px; color: #4c51bf;">
-                    💡 <strong>다음 단계 제안:</strong><br>
-                    오늘 작성한 성찰 내용을 바탕으로 지속적인 자기계발에 도전해보세요!<br>
-                    자신만의 매력을 더욱 발전시켜 나가시길 응원합니다.
-                </p>
-            </div>
-            
-            <div style="margin-top: 30px;">
-                <button class="btn" onclick="resetToBeginning()">처음으로 돌아가기</button>
-            </div>
-            
-            <div style="margin-top: 20px; font-size: 12px; color: #a0aec0;">
-                완료 시간: ${new Date().toLocaleString('ko-KR')}
-            </div>
-        </div>
-    `;
-}
+
 
 // ==================== 유// filepath: /Users/jangjinhyuk/Documents/Aster coding/attraction test/js/testlogic.js
 // 기존 코드 마지막 부분에 이어서 추가:
@@ -3589,83 +3555,7 @@ function checkSurveyCompletion() {
     document.getElementById('surveySubmitBtn').disabled = !allCompleted;
 }
 
-// ==================== 설문조사 제출 및 완료 ====================
-// ==================== 설문조사 제출 및 완료 ====================
-function submitSurvey() {
-    console.log('📊 설문조사 제출 시작');
-    
-    // 필수 항목 체크
-    const satisfaction = document.querySelector('input[name="overall_satisfaction"]:checked');
-    const recommendation = document.querySelector('input[name="recommendation"]:checked');
-    
-    // 설문 필수 항목이 더 많으므로, setupSurveyValidation의 로직을 활용하여 버튼 활성화 여부로 체크
-    const submitBtn = document.getElementById('surveySubmitBtn');
-    if (submitBtn && submitBtn.disabled) {
-        alert('모든 필수 항목에 답변해주세요.');
-        return;
-    }
-    
-    // 설문 데이터 수집
-    const surveyData = {
-        overall_satisfaction: document.querySelector('input[name="overall_satisfaction"]:checked')?.value || '',
-        discovery_help: document.querySelector('input[name="discovery_help"]:checked')?.value || '',
-        recommendation: document.querySelector('input[name="recommendation"]:checked')?.value || '',
-        stage1_rating: document.querySelector('input[name="stage1_rating"]:checked')?.value || '',
-        stage2_rating: document.querySelector('input[name="stage2_rating"]:checked')?.value || '',
-        stage3_rating: document.querySelector('input[name="stage3_rating"]:checked')?.value || '',
-        onboarding_rating: document.querySelector('input[name="onboarding_rating"]:checked')?.value || '',
-        skip_option_rating: document.querySelector('input[name="skip_option_rating"]:checked')?.value || '',
-        example_rating: document.querySelector('input[name="example_rating"]:checked')?.value || '',
-        template_rating: document.querySelector('input[name="template_rating"]:checked')?.value || '',
-        keywords_rating: document.querySelector('input[name="keywords_rating"]:checked')?.value || '',
-        understanding_improvement: document.querySelector('input[name="understanding_improvement"]:checked')?.value || '',
-        positivity_improvement: document.querySelector('input[name="positivity_improvement"]:checked')?.value || '',
-        
-        positive_experience: document.querySelector('textarea[name="positive_experience"]')?.value || '',
-        understanding_reason: document.querySelector('textarea[name="understanding_reason"]')?.value || '',
-        development_suggestion: document.querySelector('textarea[name="development_suggestion"]')?.value || '',
-        needs_improvement: document.querySelector('select[name="needs_improvement"]')?.value || '',
-        improvement_reason: document.querySelector('textarea[name="improvement_reason"]')?.value || '',
-        submitted_at: new Date().toISOString()
-    };
-    
-    completeTestData.survey_responses = surveyData;
-    
-    // 전체 테스트 데이터 구성
-    const finalTestData = {
-        userId: localStorage.getItem('userId') || generateUserId(),
-        stage1_selections: testSystem.stage1_selections,
-        stage2_situation_responses: testSystem.stage2_situation_responses,
-        stage2_personality_responses: testSystem.stage2_personality_responses,
-        stage3_responses: testSystem.stage3_responses,
-        survey_responses: surveyData,
-        completed: true,
-        timestamp: new Date().toISOString(),
-        stage1_duration: window.completeTestData?.stage1_duration,
-        stage2_duration: window.completeTestData?.stage2_duration,
-        stage3_duration: window.completeTestData?.stage3_duration
-    };
-    
-    console.log('📋 완전한 테스트 데이터:', finalTestData);
-    
-    // Firebase에 저장
-    if (window.firebaseDB) {
-        window.firebaseAddDoc(window.firebaseCollection(window.firebaseDB, 'complete_responses'), finalTestData)
-            .then(() => {
-                console.log('🔥 Firebase 저장 완료!');
-                resetToBeginning(); // ⬅️ 수정: 완료 페이지 대신 초기화 함수 호출
-            })
-            .catch((error) => {
-                console.error('❌ Firebase 저장 실패:', error);
-                localStorage.setItem('completeTestData', JSON.stringify(finalTestData));
-                resetToBeginning(); // ⬅️ 수정: 여기도 초기화 함수 호출
-            });
-    } else {
-        console.log('💾 로컬 저장으로 진행');
-        localStorage.setItem('completeTestData', JSON.stringify(finalTestData));
-        resetToBeginning(); // ⬅️ 수정: 여기도 초기화 함수 호출
-    }
-}
+
 
 
 // ==================== 유틸리티 함수들 ====================
@@ -4636,6 +4526,18 @@ window.tempSelectedKeywords = [];
 console.log('✅ 매력 키워드 시스템 초기화 완료!');
 // 템플릿 사용 성공 메시지
 
+
+
+
+// testlogic.js 파일 맨 아래에 추가하세요.
+
+/**
+ * 모든 테스트 상태를 초기화하고 첫 화면(introStage)으로 돌아가는 함수
+ */// ✅ STEP 2: 이 코드 블록 전체를 복사하여 testlogic.js 파일의 끝에 붙여넣으세요.
+
+/**
+ * 설문조사 페이지의 HTML 구조를 생성하고 화면에 렌더링합니다.
+ */
 function renderSurvey() {
     const container = document.getElementById('surveyContainer');
     if (!container) {
@@ -4664,7 +4566,7 @@ function renderSurvey() {
                     <div class="rating-scale">
                         ${[1,2,3,4,5].map(num => `
                             <div class="rating-item">
-                                <input type="radio" name="overall_satisfaction" value="${num}" required>
+                                <input type="radio" name="overall_satisfaction" value="${num}">
                                 <div class="rating-label">${num === 1 ? '매우<br>불만족' : num === 2 ? '불만족' : num === 3 ? '보통' : num === 4 ? '만족' : '매우<br>만족'}</div>
                             </div>
                         `).join('')}
@@ -4678,7 +4580,7 @@ function renderSurvey() {
                     <div class="rating-scale">
                         ${[1,2,3,4,5].map(num => `
                             <div class="rating-item">
-                                <input type="radio" name="discovery_help" value="${num}" required>
+                                <input type="radio" name="discovery_help" value="${num}">
                                 <div class="rating-label">${num === 1 ? '매우 도움<br>안 됨' : num === 2 ? '도움<br>안 됨' : num === 3 ? '보통' : num === 4 ? '도움 됨' : '매우<br>도움 됨'}</div>
                             </div>
                         `).join('')}
@@ -4692,7 +4594,7 @@ function renderSurvey() {
                     <div class="rating-scale">
                         ${[1,2,3,4,5].map(num => `
                             <div class="rating-item">
-                                <input type="radio" name="recommendation" value="${num}" required>
+                                <input type="radio" name="recommendation" value="${num}">
                                 <div class="rating-label">${num === 1 ? '전혀<br>추천 안 함' : num === 2 ? '별로 추천<br>안 함' : num === 3 ? '보통' : num === 4 ? '추천함' : '매우<br>추천함'}</div>
                             </div>
                         `).join('')}
@@ -4715,7 +4617,7 @@ function renderSurvey() {
                     <div class="rating-scale">
                         ${[1,2,3,4,5].map(num => `
                             <div class="rating-item">
-                                <input type="radio" name="stage1_rating" value="${num}" required>
+                                <input type="radio" name="stage1_rating" value="${num}">
                                 <div class="rating-label">${num}</div>
                             </div>
                         `).join('')}
@@ -4727,7 +4629,7 @@ function renderSurvey() {
                     <div class="rating-scale">
                         ${[1,2,3,4,5].map(num => `
                             <div class="rating-item">
-                                <input type="radio" name="stage2_rating" value="${num}" required>
+                                <input type="radio" name="stage2_rating" value="${num}">
                                 <div class="rating-label">${num}</div>
                             </div>
                         `).join('')}
@@ -4739,7 +4641,7 @@ function renderSurvey() {
                     <div class="rating-scale">
                         ${[1,2,3,4,5].map(num => `
                             <div class="rating-item">
-                                <input type="radio" name="stage3_rating" value="${num}" required>
+                                <input type="radio" name="stage3_rating" value="${num}">
                                 <div class="rating-label">${num}</div>
                             </div>
                         `).join('')}
@@ -4750,7 +4652,7 @@ function renderSurvey() {
                     <div class="survey-question-title">
                         프로그램 전체 과정 중, 가장 개선이 필요하다고 생각되는 부분이나 가장 혼란스러웠던 단계 또는 기능 한 가지를 선택해주세요. *
                     </div>
-                    <select class="dropdown-select" name="needs_improvement" required>
+                    <select class="dropdown-select" name="needs_improvement">
                         <option value="">선택해주세요</option>
                         <option value="1단계 카테고리 선택">1단계 카테고리 선택</option>
                         <option value="2단계 4지선다 질문 (상황)">2단계 4지선다 질문 (상황)</option>
@@ -4776,7 +4678,7 @@ function renderSurvey() {
                     <div class="rating-scale">
                         ${[1,2,3,4,5].map(num => `
                             <div class="rating-item">
-                                <input type="radio" name="onboarding_rating" value="${num}" required>
+                                <input type="radio" name="onboarding_rating" value="${num}">
                                 <div class="rating-label">${num}</div>
                             </div>
                         `).join('')}
@@ -4788,7 +4690,7 @@ function renderSurvey() {
                     <div class="rating-scale">
                         ${[1,2,3,4,5].map(num => `
                             <div class="rating-item">
-                                <input type="radio" name="example_rating" value="${num}" required>
+                                <input type="radio" name="example_rating" value="${num}">
                                 <div class="rating-label">${num}</div>
                             </div>
                         `).join('')}
@@ -4800,7 +4702,7 @@ function renderSurvey() {
                     <div class="rating-scale">
                         ${[1,2,3,4,5].map(num => `
                             <div class="rating-item">
-                                <input type="radio" name="template_rating" value="${num}" required>
+                                <input type="radio" name="template_rating" value="${num}">
                                 <div class="rating-label">${num}</div>
                             </div>
                         `).join('')}
@@ -4812,7 +4714,7 @@ function renderSurvey() {
                     <div class="rating-scale">
                         ${[1,2,3,4,5].map(num => `
                             <div class="rating-item">
-                                <input type="radio" name="keywords_rating" value="${num}" required>
+                                <input type="radio" name="keywords_rating" value="${num}">
                                 <div class="rating-label">${num}</div>
                             </div>
                         `).join('')}
@@ -4838,7 +4740,7 @@ function renderSurvey() {
                     <div class="rating-scale">
                         ${[1,2,3,4,5].map(num => `
                             <div class="rating-item">
-                                <input type="radio" name="understanding_improvement" value="${num}" required>
+                                <input type="radio" name="understanding_improvement" value="${num}">
                                 <div class="rating-label">${num === 1 ? '전혀<br>그렇지 않다' : num === 2 ? '별로<br>그렇지 않다' : num === 3 ? '보통' : num === 4 ? '어느 정도<br>그렇다' : '매우<br>그렇다'}</div>
                             </div>
                         `).join('')}
@@ -4853,7 +4755,7 @@ function renderSurvey() {
                     <div class="rating-scale">
                         ${[1,2,3,4,5].map(num => `
                             <div class="rating-item">
-                                <input type="radio" name="positivity_improvement" value="${num}" required>
+                                <input type="radio" name="positivity_improvement" value="${num}">
                                 <div class="rating-label">${num === 1 ? '전혀<br>그렇지 않다' : num === 2 ? '별로<br>그렇지 않다' : num === 3 ? '보통' : num === 4 ? '어느 정도<br>그렇다' : '매우<br>그렇다'}</div>
                             </div>
                         `).join('')}
@@ -4878,136 +4780,189 @@ function renderSurvey() {
         </div>
     `;
     
-    // 설문 응답 상태 체크 함수 추가
+    // 설문 응답 상태 체크 함수를 호출합니다.
     setupSurveyValidation();
 }
 
-// 설문 유효성 검사 함수
-// 기존 setupSurveyValidation 함수를 다음과 같이 수정하세요 (4080줄 이후 어딘가에 있을 것입니다):
-
+/**
+ * 설문조사의 모든 필수 항목이 채워졌는지 실시간으로 검증하여 제출 버튼을 활성화/비활성화합니다.
+ */
 function setupSurveyValidation() {
     const form = document.getElementById('surveyForm');
-    let submitBtn = document.getElementById('surveySubmitBtn');
-    
-    // 버튼이 없으면 찾아보기
-    if (!submitBtn) {
-        submitBtn = document.querySelector('.btn[onclick*="submitSurvey"]');
+    const submitBtn = document.getElementById('surveySubmitBtn');
+
+    if (!form || !submitBtn) {
+        console.error("설문조사 form 또는 제출 버튼을 찾을 수 없습니다.");
+        return;
     }
-    
-    console.log('Submit button found:', submitBtn); // 디버깅용
-    
-    // 필수 필드들
+
+    // 화면에 렌더링 된 모든 필수 항목의 이름을 배열로 만듭니다.
+    // HTML의 input, select 태그에 name 속성을 기준으로 합니다.
     const requiredFields = [
-        'overall_satisfaction',
-        'discovery_help', 
-        'recommendation',
-        'stage1_rating',
-        'stage2_rating', 
-        'stage3_rating',
-        'needs_improvement',
-        'onboarding_rating',
-        'skip_option_rating',
-        'example_rating',
-        'template_rating',
-        'keywords_rating',
-        'understanding_improvement',
+        'overall_satisfaction', 'discovery_help', 'recommendation',
+        'stage1_rating', 'stage2_rating', 'stage3_rating',
+        'needs_improvement', 'onboarding_rating', 'example_rating',
+        'template_rating', 'keywords_rating', 'understanding_improvement',
         'positivity_improvement'
     ];
-    
+
     function checkFormCompletion() {
+        // every() 메소드를 사용하여 모든 필수 필드가 조건을 만족하는지 확인합니다.
         const allCompleted = requiredFields.every(fieldName => {
-            const field = form.querySelector(`[name="${fieldName}"]:checked`) || 
-                         form.querySelector(`[name="${fieldName}"]`);
-            return field && field.value;
-        });
-        
-        console.log('Form completion status:', allCompleted); // 디버깅용
-        
-        if (submitBtn) {
-            submitBtn.disabled = !allCompleted;
-            if (allCompleted) {
-                submitBtn.style.opacity = '1';
-                submitBtn.style.cursor = 'pointer';
-            } else {
-                submitBtn.style.opacity = '0.5';
-                submitBtn.style.cursor = 'not-allowed';
+            const element = form.querySelector(`[name="${fieldName}"]`);
+            if (!element) {
+                console.warn(`필수 필드 요소 [name="${fieldName}"]를 찾을 수 없습니다.`);
+                return false; 
             }
-        }
+
+            // 타입이 라디오 버튼인 경우, 그룹 중 하나가 체크되었는지 확인합니다.
+            if (element.type === 'radio') {
+                return form.querySelector(`[name="${fieldName}"]:checked`) !== null;
+            } 
+            // 라디오 버튼이 아닌 경우(예: select), 값이 비어있지 않은지 확인합니다.
+            else {
+                return element.value.trim() !== '';
+            }
+        });
+
+        // 모든 필수 항목이 완료되었다면 버튼의 disabled 속성을 false로, 아니면 true로 설정합니다.
+        submitBtn.disabled = !allCompleted;
     }
-    
-    // 모든 input과 select에 이벤트 리스너 추가
-    if (form) {
-        form.addEventListener('change', checkFormCompletion);
-        form.addEventListener('input', checkFormCompletion);
-        
-        // 초기 상태 체크
-        setTimeout(checkFormCompletion, 100); // 약간의 지연 후 체크
-    }
+
+    // 사용자가 폼 내용을 변경할 때마다 (클릭, 입력 등) 검증 함수를 실행합니다.
+    form.addEventListener('change', checkFormCompletion);
+    form.addEventListener('input', checkFormCompletion);
+
+    // 페이지가 처음 로드될 때도 한 번 검사하여 초기 버튼 상태를 설정합니다.
+    checkFormCompletion();
 }
 
-// testlogic.js 파일 맨 아래에 추가하세요.
+function submitSurvey() {
+    const submitBtn = document.getElementById('surveySubmitBtn');
+    if (submitBtn && submitBtn.disabled) {
+        alert('모든 필수 항목에 답변해주세요.');
+        return;
+    }
+
+    // [수정!] 버튼을 누르는 즉시 비활성화하고 텍스트를 변경하여 로딩 중임을 표시합니다.
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '제출 중...';
+    }
+    
+    console.log('📊 설문조사 제출 및 즉시 초기화 시작');
+
+    const form = document.getElementById('surveyForm');
+    const formData = new FormData(form);
+    const surveyData = {};
+    for (let [key, value] of formData.entries()) {
+        surveyData[key] = value;
+    }
+    surveyData.submitted_at = new Date().toISOString();
+    
+    const finalTestData = {
+        ...window.completeTestData,
+        survey_responses: surveyData,
+        completed: true,
+        timestamp: new Date().toISOString()
+    };
+    
+    console.log('📋 최종 제출 데이터:', finalTestData);
+    
+    if (window.firebaseDB && window.firebaseAddDoc) {
+        window.firebaseAddDoc(window.firebaseCollection(window.firebaseDB, 'complete_responses'), finalTestData)
+            .then(() => {
+                console.log('🔥 Firebase 저장 성공!');
+                resetToBeginning();
+            })
+            .catch((error) => {
+                console.error('❌ Firebase 저장 실패:', error);
+                localStorage.setItem('completeTestData_fallback', JSON.stringify(finalTestData));
+                alert('데이터 저장 중 오류가 발생했습니다. 답변은 안전하게 브라우저에 임시 저장되었습니다.');
+                resetToBeginning();
+            });
+    } else {
+        console.log('💾 Firebase가 없어 로컬 스토리지에 저장합니다.');
+        localStorage.setItem('completeTestData_fallback', JSON.stringify(finalTestData));
+        resetToBeginning();
+    }
+}
+/**
+ * 최종 완료 페이지를 화면에 표시합니다.
+ */
+function showFinalComplete() {
+    document.getElementById('surveyStage').style.display = 'none';
+    const finalCompleteDiv = document.getElementById('finalComplete');
+    finalCompleteDiv.style.display = 'block';
+    
+    finalCompleteDiv.innerHTML = `
+        <div style="text-align: center; padding: 60px 40px;">
+            <div style="font-size: 56px; margin-bottom: 20px;">🎉</div>
+            <h2 style="font-size: 28px; color: #5a67d8; margin-bottom: 20px;">모든 여정이 완료되었습니다!</h2>
+            <p style="font-size: 16px; color: #4a5568; line-height: 1.7; max-width: 600px; margin: 0 auto 40px auto;">
+                소중한 시간을 내어 ASTER 매력 탐구 프로그램에 참여해주셔서 진심으로 감사합니다.<br>
+                당신의 피드백은 저희에게 큰 힘이 됩니다. 이 경험이 자신을 더 깊이 이해하는<br>
+                의미있는 시간이 되셨기를 바랍니다.
+            </p>
+            <button class="btn" onclick="resetToBeginning()">처음으로 돌아가기</button>
+        </div>
+    `;
+}
 
 /**
- * 모든 테스트 상태를 초기화하고 첫 화면(introStage)으로 돌아가는 함수
+ * 모든 테스트 상태를 초기화하고 첫 화면으로 돌아갑니다.
  */
 function resetToBeginning() {
-    console.log('🔄 테스트 초기화 및 첫 화면으로 복귀 시작...');
+    console.log('🔄 테스트 초기화 및 첫 화면으로 복귀');
 
-    // 1. 모든 stage와 모달을 숨깁니다.
-    const allStageIds = [
-        'introStage', 'stage1', 'stage2Situation', 'stage2Personality', 
-        'responseSummary', 'stage3_onboarding', 'stage3_page1', 'stage3_page2', 
-        'stage3_page3', 'surveyStage', 'finalComplete',
-        'exampleModal', 'attractionModal', 'templateModal'
-    ];
-    allStageIds.forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.style.display = 'none';
-        }
+    // 모든 stage 숨기기
+    const allStages = document.querySelectorAll('.stage');
+    allStages.forEach(stage => {
+        stage.style.display = 'none';
     });
 
-    // 2. introStage만 다시 보여줍니다.
+    // introStage만 다시 보여주기
     document.getElementById('introStage').style.display = 'block';
 
-    // 3. 테스트 데이터와 상태를 초기화합니다.
-    // AttractionTestSystem 인스턴스의 데이터 초기화
+    // 전역 변수 및 객체 데이터 초기화
     testSystem.stage1_selections = [];
     testSystem.stage2_situation_responses = [];
     testSystem.stage2_personality_responses = [];
     testSystem.stage3_responses = {};
-    
-    // 전역으로 관리되던 3단계 질문 ID 초기화
     stage3SelectedQuestionIds = null;
-
-    // 전체 테스트 결과 객체 초기화
-    completeTestData = {
-        userId: null,
-        timestamp: null,
-        stage1_selections: [],
-        stage2_situation_responses: [],
-        stage2_personality_responses: [],
-        stage3_responses: {},
-        survey_responses: {},
-        completed: false,
-        stage1_duration: null,
-        stage2_duration: null,
-        stage3_duration: null
+    
+    window.completeTestData = {
+        userId: null, timestamp: null, stage1_selections: [], stage2_situation_responses: [],
+        stage2_personality_responses: [], stage3_responses: {}, survey_responses: {},
+        completed: false, stage1_duration: null, stage2_duration: null, stage3_duration: null
+    };
+    
+    window.stageTimers = {
+        stage1Start: null, stage2Start: null, stage3Start: null, currentPageStart: null
     };
 
-    // 타이머 기록 초기화
-    stageTimers = {
-        stage1Start: null,
-        stage2Start: null, 
-        stage3Start: null,
-        currentPageStart: null
-    };
-
-    // 로컬 스토리지의 사용자 ID도 새로 생성하도록 삭제
+    // 로컬 스토리지 데이터 정리
     localStorage.removeItem('userId');
     localStorage.removeItem('asterProgressData');
+    localStorage.removeItem('completeTestData_fallback');
 
     console.log('✅ 테스트가 성공적으로 초기화되었습니다.');
+}
+
+// testlogic.js 파일 맨 아래에 추가
+
+// '맨 위로 가기' 버튼 스크롤 이벤트 처리
+window.onscroll = function() {
+    scrollFunction();
+};
+
+function scrollFunction() {
+    const backToTopBtn = document.getElementById("backToTopBtn");
+    if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
+        backToTopBtn.style.display = "block";
+    } else {
+        backToTopBtn.style.display = "none";
+    }
 }
 
 console.log('✅ 템플릿 시스템 초기화 완료 - 29개 질문 템플릿 데이터 로드됨');
