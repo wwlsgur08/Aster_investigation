@@ -1339,6 +1339,61 @@
     color: #FFFFFF !important; 
 }
 /* ▲▲▲ 시작 페이지 안내 박스 강조 스타일 종료 ▲▲▲ */
+
+/* ========================================= */
+/* ✨ 3단계 온보딩 데모 인지도 향상 스타일 ✨ */
+/* ========================================= */
+
+/* "미리 체험하기" 헤더 스타일 */
+.demo-notice-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background-color: #5a67d8;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px 20px 0 0; /* 위쪽만 둥글게 */
+    margin: 0 auto;
+    width: fit-content; /* 내용물 크기에 맞게 너비 조절 */
+    font-weight: bold;
+    font-size: 14px;
+    transform: translateY(1px); /* 카드와 살짝 겹치게 */
+}
+
+.demo-icon {
+    font-size: 18px;
+    animation: bounce 2s ease-in-out infinite; /* 아이콘에 통통 튀는 애니메이션 추가 */
+}
+
+/* "연습문제" 뱃지 스타일 */
+.demo-badge {
+    background: #48bb78 !important; /* 초록색 배경으로 변경 */
+    color: white !important;
+    font-weight: bold;
+    padding: 6px 14px !important;
+    font-size: 13px !important;
+}
+
+/* 데모 카드에 점선 테두리 강조 */
+.demo-card {
+    border-style: dashed !important;
+    border-width: 2px !important;
+    border-color: #a3bffa !important;
+}
+
+/* 통통 튀는 애니메이션 정의 */
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-5px);
+    }
+    60% {
+        transform: translateY(-3px);
+    }
+}
     </style>
 </head>
 <body>
