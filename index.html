@@ -1113,118 +1113,155 @@
 /* =============================================== */
 /* ✨ 모바일 반응형 UI 개선 (768px 이하) ✨ */
 /* =============================================== */
+/* ================================================== */
+/* ✨ 모바일 반응형 UI 개선 (더 공격적인 버전) ✨ */
+/* ================================================== */
 @media (max-width: 768px) {
 
-    /* 1. 기본 레이아웃 및 폰트 조정 */
+    /* 1. 기본 레이아웃 및 폰트 공격적 조정 */
     body {
-        padding: 0; /* body의 여백을 없애고 #app에서 관리 */
+        padding: 0;
+        -webkit-text-size-adjust: 100%; /* iOS에서 폰트 자동 확대 방지 */
     }
 
     #app {
         width: 100%;
         min-height: 100vh;
-        border-radius: 0; /* 모바일에서는 둥근 모서리 제거 */
+        border-radius: 0;
         box-shadow: none;
     }
     
     .stage {
-        padding: 25px 20px; /* 상하, 좌우 여백 조정 */
+        padding: 25px 15px; /* 좌우 여백을 더 줄여서 공간 확보 */
         min-height: calc(100vh - 50px);
     }
     
     h2 {
-        font-size: 24px; /* 제목 폰트 크기 조정 */
+        font-size: 22px; /* 제목 폰트 크기 더 줄임 */
         line-height: 1.4;
+        margin-bottom: 15px;
     }
 
+    /* 본문/설명 텍스트 가독성 최적화 */
     .intro-content p,
     .stage > p {
-        font-size: 15px; /* 본문/설명 텍스트 가독성 향상 */
-        line-height: 1.7;
+        font-size: 14px; 
+        line-height: 1.6;
+        color: #555; /* 너무 진하지 않게 톤 조정 */
     }
 
-    /* 2. 버튼 및 터치 영역 개선 */
+    /* 2. 버튼 및 터치 영역 최적화 */
     .btn {
-        padding: 14px 25px;
+        padding: 14px 20px;
         font-size: 15px;
-        width: 80%;
-        max-width: 300px;
+        width: 90%; /* 너비 살짝 늘림 */
+        max-width: 320px;
     }
 
     .category-item,
     .choice-item {
-        padding: 15px; /* 선택지 터치 영역 확보 */
+        padding: 12px 15px; /* 내부 여백 미세 조정 */
+        line-height: 1.5; /* 줄 간격 추가 */
     }
+    
+    .category-item strong, .choice-item strong {
+        font-size: 15px;
+    }
+    .category-item div, .choice-item div {
+        font-size: 13px; /* 설명 폰트도 살짝 줄임 */
+    }
+
 
     /* 3. 스테이지별 UI 개선 */
 
     /* 1단계: 매력 선택 */
     .category-selection {
-        grid-template-columns: 1fr; /* 1열로 변경하여 세로 정렬 */
-        gap: 12px;
+        grid-template-columns: 1fr;
+        gap: 10px; /* 아이템 간 간격 줄임 */
     }
 
     /* 2단계: 질문 카드 */
     .question-card, .survey-section {
-        padding: 20px;
+        padding: 15px; /* 카드 내부 여백 줄임 */
+        margin-bottom: 20px;
     }
     .question-title, .survey-question-title {
-        font-size: 16px;
+        font-size: 15px;
+        margin-bottom: 12px;
     }
 
     /* 3단계: 성찰 질문 */
     .reflection-question-card {
-        padding: 20px;
+        padding: 15px;
+        margin-bottom: 25px; /* 카드 간 간격 조정 */
     }
     .reflection-question-title {
-        font-size: 18px;
+        font-size: 17px;
     }
     .reflection-sub-question {
-        padding: 15px;
+        padding: 12px;
+    }
+    .helper-buttons {
+        gap: 8px; /* 도우미 버튼 간격 줄임 */
+        margin-top: 10px;
     }
     .helper-btn {
-        padding: 10px 16px; /* 도우미 버튼 터치 영역 확보 */
-        font-size: 13px;
+        padding: 8px 14px;
+        font-size: 12px;
     }
     
     /* 3단계 온보딩 데모 */
     .guide-boxes-container {
-        grid-template-columns: 1fr; /* 데모 박스도 1열로 변경 */
-        gap: 20px;
+        grid-template-columns: 1fr;
+        gap: 15px;
         padding: 0;
     }
+    .interactive-demo-container .reflection-question-card {
+        padding: 20px 15px; /* 데모 카드 여백 조정 */
+    }
+    .demo-content-wrapper {
+        margin: 10px 0 0 0;
+    }
+    .guide-questions-container, .example-container {
+        margin: 0 0 15px 0;
+        padding: 15px;
+    }
+
 
     /* 4. 모달(팝업) UI 개선 */
     .modal-content {
-        width: 95%; /* 화면 너비에 꽉 차게 조정 */
+        width: 95%;
         margin: 5% auto;
-        padding: 25px;
-        max-height: 85vh; /* 모달 최대 높이 조정 */
+        padding: 20px; /* 모달 내부 여백 줄임 */
+        max-height: 88vh;
     }
     
     .modal-title {
-        font-size: 18px;
+        font-size: 17px;
     }
 
     /* 매력 키워드 선택 모달 */
     .attraction-keywords {
-        /* minmax의 최소값을 줄여 모바일에서 2-3열로 보이게 함 */
-        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-        gap: 10px;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 8px;
     }
     
     .attraction-keyword {
         font-size: 12px;
-        padding: 6px 10px;
+        padding: 6px 12px;
     }
 
     /* 5. 설문조사 UI 개선 */
-    .rating-item {
-        min-width: 50px; /* 점수 평가 아이템 간격 조정 */
-        gap: 8px;
+    .survey-section-title {
+        font-size: 16px;
     }
-    .rating-label {
-        font-size: 10px;
+    .rating-item {
+        min-width: 48px; /* 더 컴팩트하게 조정 */
+        gap: 6px;
+    }
+    .dropdown-select, .text-input {
+        padding: 12px;
+        font-size: 14px;
     }
 }
 
